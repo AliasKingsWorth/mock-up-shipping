@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Miami to Honduras | Receiving and tracking</title>
+  <meta name="description" content="A working preview of the Miami receiving desk, customer package tracking, labels, collections and first freight quotes.">
+  <link rel="stylesheet" href="/theme.css">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <a class="skip-link" href="#app">Skip to workspace</a>
+  <header class="topbar">
+    <a class="brand" href="#customer" aria-label="Open customer portal"><span class="brand-mark">M<span>↗</span></span><span><strong id="company-name">Miami ↔ Honduras Freight</strong><small>RECEIVING &amp; TRACKING</small></span></a>
+    <div class="top-actions"><span class="demo-pill"><span class="pulse"></span> Local demo data</span><select id="persona" aria-label="Choose demo customer"><option value="cus_ana">Ana Martínez · Customer</option><option value="cus_miguel">Miguel Reyes · Customer</option></select></div>
+  </header>
+  <div class="shell">
+    <aside class="sidebar">
+      <div class="side-caption">FIRST MILE WORKSPACE</div>
+      <nav aria-label="Main navigation"><button class="nav-link active" data-view="customer"><span class="nav-index">01</span> Customer portal</button><button class="nav-link" data-view="receiving"><span class="nav-index">02</span> Receiving desk</button><button class="nav-link" data-view="setup"><span class="nav-index">03</span> Demo setup</button></nav>
+      <div class="side-card"><span class="side-card-icon">THE ROUTE</span><div class="route-line"><span>MIA</span><span class="route-rule"></span><span>HND</span></div><strong>Every box starts with a clear record.</strong><p>A label, a shelf, a receipt. Then the customer can follow the journey.</p></div>
+      <div class="side-foot">MIAMI → HONDURAS<br><span>Phase 1 · local working preview</span></div>
+    </aside>
+    <main id="app" class="main"><div class="loading-state">Preparing your demo workspace…</div></main>
+  </div>
+  <div id="toast" class="toast" role="status"></div>
+  <script src="/vendor/jsQR.js"></script>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

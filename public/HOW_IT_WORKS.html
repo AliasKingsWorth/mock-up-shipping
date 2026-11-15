@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Phase 1 demo guide | Miami to Honduras</title>
+  <meta name="description" content="A plain-language guide to the customer tracking and Miami receiving demo.">
+  <style>
+    :root{--paper:#f4f0e8;--white:#fffdf8;--ink:#24332e;--soft:#58635b;--line:#ded6c9;--green:#12675c;--clay:#9b4d29}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.6 Arial,sans-serif}a{color:var(--green)}a:focus-visible,button:focus-visible{outline:3px solid var(--clay);outline-offset:3px}
+    .mast{background:var(--ink);color:var(--white)}.mast-inner{max-width:1080px;margin:auto;padding:19px 25px;display:flex;align-items:center;justify-content:space-between;gap:20px}.brand{font-weight:800;letter-spacing:-.3px}.mast small{display:block;color:#cadbd1;font-size:11px;letter-spacing:2px}.mast a{color:var(--white);font-size:13px}
+    main{max-width:1080px;margin:auto;padding:48px 25px 80px}.eyebrow{color:var(--clay);font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase}h1,h2,h3{font-family:Georgia,serif;line-height:1.18;letter-spacing:-.5px}h1{max-width:760px;margin:8px 0 12px;font-size:clamp(36px,5vw,60px)}h2{margin:5px 0 13px;font-size:32px}h3{margin:0 0 8px;font-size:22px}p{margin:0 0 15px}.lead{max-width:770px;color:var(--soft);font-size:19px}.notice{max-width:800px;margin:30px 0;padding:18px 21px;border-left:4px solid var(--green);background:var(--white)}.notice p:last-child{margin:0}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;margin:26px 0 0}.button{display:inline-block;padding:12px 18px;border:1px solid var(--green);border-radius:7px;background:var(--green);color:white;text-decoration:none;font-size:14px;font-weight:700}.button.secondary{background:transparent;color:var(--green)}button.button{cursor:pointer;font:700 14px Arial,sans-serif}
+    section{padding:42px 0;border-top:1px solid var(--line)}section:first-of-type{border-top:0}.two{display:grid;grid-template-columns:1fr 1fr;gap:24px}.panel{padding:25px;border:1px solid var(--line);border-radius:12px;background:var(--white)}.panel p:last-child{margin-bottom:0}.step{display:grid;grid-template-columns:42px 1fr;gap:16px;padding:18px 0;border-top:1px solid var(--line)}.step:first-child{border-top:0}.step b{color:var(--clay);font:700 21px Georgia,serif}.step strong{display:block;margin-bottom:4px}.step p{color:var(--soft);margin:0}.shot{display:block;width:100%;height:auto;margin:22px 0;border:1px solid var(--line);border-radius:10px;box-shadow:0 7px 24px -20px #24332e}.small{font-size:13px;color:var(--soft)}.terms{display:grid;grid-template-columns:160px 1fr;gap:12px 22px}.terms dt{font-weight:700}.terms dd{margin:0;color:var(--soft)}.footer{border-top:1px solid var(--line);padding-top:23px;color:var(--soft);font-size:13px}
+    @media(max-width:680px){main{padding:30px 18px 55px}.mast-inner{padding:15px 18px}.two{grid-template-columns:1fr}.terms{grid-template-columns:1fr;gap:2px}.terms dd{margin-bottom:15px}section{padding:32px 0}}
+    @media print{body{background:white}.mast{background:white;color:var(--ink);border-bottom:1px solid var(--line)}.mast small{color:var(--soft)}.mast a,.actions{display:none}main{padding-top:25px}.panel,.notice{break-inside:avoid}.shot{max-height:380px;object-fit:contain;box-shadow:none}}
+  </style>
+</head>
+<body>
+  <header class="mast"><div class="mast-inner"><div class="brand">Miami ↔ Honduras Freight<small>PHASE 1 DEMO GUIDE</small></div><a href="http://127.0.0.1:4175/">Open the working demo →</a></div></header>
+  <main>
+    <div class="eyebrow">For the team · no technical knowledge needed</div>
+    <h1>How a box enters the system</h1>
+    <p class="lead">This demo shows the first part of shipping: a customer prepares a box, the Miami team receives it, and the customer sees its first tracking record.</p>
+    <div class="notice"><p>Open a terminal in the folder containing <code>package.json</code>. Run <code>npm ci</code> on first setup, then run <code>npm start</code> and <a href="http://127.0.0.1:4175/">open the demo in your browser</a>.</p><p>Keep the terminal open while using the demo. Press Ctrl+C there to stop it.</p></div>
+    <div class="actions"><a class="button" href="http://127.0.0.1:4175/">Open interactive demo</a><button class="button secondary" type="button" onclick="window.print()">Print this guide</button></div>
+
+    <section id="overview"><div class="eyebrow">The short version</div><h2>One box, seven steps</h2><div class="two">
+      <div class="panel"><h3>Customer</h3><p>Gets a Miami address and account code, announces an expected box or requests South Florida collection, then follows the box after Miami receives it.</p></div>
+      <div class="panel"><h3>Miami receiving team</h3><p>Finds or creates the customer, gives the box a QR label, records contents and photos, weighs and shelves it, then prints the first receipt and a draft quote.</p></div>
+    </div></section>
+
+    <section id="try"><div class="eyebrow">Try it yourself · about 8 minutes</div><h2>Walk through a counter drop-off</h2>
+      <div class="step"><b>01</b><div><strong>Open Customer portal.</strong><p>Choose Ana Martínez in the top-right menu. Her Miami receiving address and account code are at the top. Select “Copy address + code” to see what she would send to a seller.</p></div></div>
+      <div class="step"><b>02</b><div><strong>Open Receiving desk.</strong><p>For a new walk-in customer, expand “Create a customer at the counter.” Enter a name and phone, then select “Create customer &amp; select account.” The new Miami account code is automatically selected for this box. You can also use an existing customer in the Customer account list.</p></div></div>
+      <div class="step"><b>03</b><div><strong>Generate the box label.</strong><p>Select “Generate QR,” then “Print sticker.” Put the printed label on the box. The QR code identifies the package and its customer account.</p></div></div>
+      <div class="step"><b>04</b><div><strong>Check the box.</strong><p>Enter what is inside, choose air or ocean, record the shelf, weight, size and outer condition, and add up to two photos. A walk-in box does not need a carrier tracking number.</p></div></div>
+      <div class="step"><b>05</b><div><strong>Confirm receipt.</strong><p>Select “Confirm receipt.” The demo saves one box record and one first custody event. Print the initial receipt for the person at the counter.</p></div></div>
+      <div class="step"><b>06</b><div><strong>See the draft quote.</strong><p>Select “Create draft quote.” This is an estimate based on the saved measurements and demo rates. It is not a bill or proof of payment.</p></div></div>
+      <div class="step"><b>07</b><div><strong>Check Customer portal again.</strong><p>Choose the customer whose box you received. The new package appears under “My packages.” Open it to see the contents, shelf, photos and Miami receipt event.</p></div></div>
+      <img class="shot" src="previews/preview-intake.png" alt="The receiving desk showing the blank intake form and collection queue" loading="lazy">
+      <p class="small">The screenshot is a sample. Your screen may show different demo labels and dates.</p>
+    </section>
+
+    <section id="collection"><div class="eyebrow">Another path</div><h2>South Florida collection</h2><p>In Customer portal, select “Request collection” and enter the address, date, contact and number of boxes. In Receiving desk, select “View collections,” then “Mark collected.” Choose “South Florida collection” as the receiving source and select that request before confirming each box. A two-box request stays open until both boxes are received.</p><p>The mock records the request and the staff confirmation. It does not schedule a real driver.</p></section>
+
+    <section id="other"><div class="eyebrow">Useful controls</div><h2>Find, scan and reset</h2><div class="two">
+      <div class="panel"><h3>Find or scan a box</h3><p>Use “Scan lookup” for a received box. You can enter its package label or carrier reference. The desk also accepts a USB scanner, device camera or an image of a QR label. Scanning an already received label reopens its saved record; it does not create a second receipt.</p></div>
+      <div class="panel"><h3>Start over</h3><p>“Demo setup” lets you change the sample Miami address, hours and quote rates. “Restore sample data” removes the changes made during the demo and brings back Ana and Miguel’s original examples.</p></div>
+    </div></section>
+
+    <section id="terms"><div class="eyebrow">Plain-language terms</div><h2>What the words mean</h2><dl class="terms"><dt>Account code</dt><dd>The customer’s Miami identifier. It helps the team match boxes to the right person.</dd><dt>Pre-alert</dt><dd>A customer’s note that a seller or carrier will send a box to Miami.</dd><dt>QR label</dt><dd>A printable code attached to one physical box.</dd><dt>Receipt</dt><dd>Proof that the Miami team took custody of that box.</dd><dt>Draft quote</dt><dd>A preliminary freight estimate. Final charges may differ.</dd><dt>Package journey</dt><dd>The dated list of movements and checks recorded for the box.</dd></dl></section>
+
+    <section id="limits"><div class="eyebrow">What this demo does not do</div><h2>This is a local preview</h2><p>Changes are saved on this computer so the team can refresh the page and continue testing. The customer menu is a demo switch, not a real login. This Phase 1 preview does not book a real driver, send messages, charge a card, clear customs or complete final delivery. Later journey stages shown for Ana and Miguel are sample tracking records.</p></section>
+    <div class="footer">For questions during a demo, use the steps above and the “Demo setup” page. Keep the mock server window open while showing the site.</div>
+  </main>
+</body>
+</html>
