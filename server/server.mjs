@@ -11,6 +11,9 @@ const root = path.resolve(import.meta.dirname, '..')
 const publicDir = path.join(root, 'public')
 const defaultFile = path.join(root, '.local', 'state.json')
 const staticFiles = new Map([
+  ['/', ['landing.html', 'text/html; charset=utf-8']],
+  ['/landing.css', ['landing.css', 'text/css; charset=utf-8']],
+  ['/shipping-route.webp', ['shipping-route.webp', 'image/webp']],
   ['/login', ['auth.html', 'text/html; charset=utf-8']],
   ['/register', ['auth.html', 'text/html; charset=utf-8']],
   ['/staff/login', ['auth.html', 'text/html; charset=utf-8']],
@@ -79,7 +82,8 @@ export function createMockServer({ dataFile = process.env.MOCK_DATA_FILE || defa
       const home = identity?.role === 'staff' ? '/receiving' : '/portal'
       const redirect = location => { res.writeHead(303, { location, 'cache-control': 'no-store' }); res.end() }
       if (req.method === 'GET') {
-        if (route === '/' || route === '/index.html') return redirect(identity ? home : '/login')
+        if (route === '/index.html') return redirect(identity ? home : '/')
+        if (route === '/' && identity) return redirect(home)
         if (route === '/portal' || route === '/receiving') {
           if (!identity) return redirect(route === '/receiving' ? '/staff/login' : '/login')
           if (route !== home) return redirect(home)

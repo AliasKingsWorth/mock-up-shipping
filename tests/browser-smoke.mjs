@@ -18,6 +18,12 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, de
 const errors = []
 page.on('pageerror', error => errors.push(error.message))
 try {
+  await page.goto(url)
+  await page.getByRole('navigation').getByRole('link', { name: 'Login' }).click()
+  await page.getByRole('heading', { name: 'Customer sign in' }).waitFor()
+  await page.goto(url)
+  await page.getByRole('link', { name: 'Create free account' }).click()
+  await page.getByRole('heading', { name: 'Create customer account' }).waitFor()
   await page.goto(url + '/receiving')
   assert.equal(new URL(page.url()).pathname, '/staff/login')
   assert.equal((await page.request.get(url + '/api/mock/bootstrap')).status(), 401)
