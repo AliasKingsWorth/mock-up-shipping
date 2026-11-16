@@ -4,14 +4,19 @@ import { readFile, mkdir, writeFile, rename } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import QRCode from 'qrcode'
+import { createAuth, hashPassword, staffEmail } from './auth.mjs'
 import { createFixture } from './fixtures.mjs'
 
 const root = path.resolve(import.meta.dirname, '..')
 const publicDir = path.join(root, 'public')
 const defaultFile = path.join(root, '.local', 'state.json')
 const staticFiles = new Map([
-  ['/', ['index.html', 'text/html; charset=utf-8']],
-  ['/index.html', ['index.html', 'text/html; charset=utf-8']],
+  ['/login', ['auth.html', 'text/html; charset=utf-8']],
+  ['/register', ['auth.html', 'text/html; charset=utf-8']],
+  ['/staff/login', ['auth.html', 'text/html; charset=utf-8']],
+  ['/portal', ['index.html', 'text/html; charset=utf-8']],
+  ['/receiving', ['index.html', 'text/html; charset=utf-8']],
+  ['/auth.js', ['auth.js', 'text/javascript; charset=utf-8']],
   ['/HOW_IT_WORKS.html', ['HOW_IT_WORKS.html', 'text/html; charset=utf-8']],
   ['/preview-intake.png', ['previews/preview-intake.png', 'image/png']],
   ['/previews/preview-intake.png', ['previews/preview-intake.png', 'image/png']],
@@ -24,6 +29,7 @@ const staticFiles = new Map([
 ])
 
 export function createMockServer({ dataFile = process.env.MOCK_DATA_FILE || defaultFile } = {}) {
+  const auth = createAuth()
   let state
   let loading
   let mutation = Promise.resolve()
@@ -68,7 +74,19 @@ export function createMockServer({ dataFile = process.env.MOCK_DATA_FILE || defa
       res.end(JSON.stringify(payload))
     }
     try {
-      if (req.method === 'GET' && staticFiles.has(url.pathname)) {
+      const route = url.pathname
+      const identity = auth.current(req)
+      const home = identity?.role === 'staff' ? '/receiving' : '/portal'
+      const redirect = location => { res.writeHead(303, { location, 'cache-control': 'no-store' }); res.end() }
+      if (req.method === 'GET') {
+        if (route === '/' || route === '/index.html') return redirect(identity ? home : '/login')
+        if (route === '/portal' || route === '/receiving') {
+          if (!identity) return redirect(route === '/receiving' ? '/staff/login' : '/login')
+          if (route !== home) return redirect(home)
+        }
+        if (identity && ['/login', '/staff/login', '/register'].includes(route)) return redirect(home)
+      }
+      if (req.method === 'GET' && staticFiles.has(route)) {
         const [name, type] = staticFiles.get(url.pathname)
         const content = await readFile(path.resolve(publicDir, name))
         res.writeHead(200, { 'content-type': type, 'cache-control': 'no-store' })
@@ -76,9 +94,33 @@ export function createMockServer({ dataFile = process.env.MOCK_DATA_FILE || defa
         return
       }
       if (!url.pathname.startsWith('/api/mock/')) return send(404, { error: 'Not found' })
+      if (req.method !== 'GET' && req.headers['content-type']?.split(';')[0] !== 'application/json') return send(415, { error: 'Send a JSON request.' })
       const db = await load()
+      const registering = req.method === 'POST' && route === '/api/mock/auth/register'
+      if (req.method === 'POST' && route === '/api/mock/auth/login') {
+        const user = await auth.login(db, await readJson(req), req.socket.remoteAddress)
+        auth.start(req, res, user)
+        return send(200, user)
+      }
+      if (req.method === 'POST' && route === '/api/mock/auth/logout') {
+        auth.end(req, res)
+        return send(200, { signedOut: true })
+      }
+      if (!registering && !identity) return send(401, { error: 'Sign in to continue.' })
+      if (req.method === 'GET' && route === '/api/mock/auth/session') return send(200, identity)
+      const isStaff = identity?.role === 'staff'
+      const own = identity?.customerId
+      if (!registering && !isStaff) {
+        const permitted = (req.method === 'GET' && (route === '/api/mock/bootstrap' || route === `/api/mock/customers/${own}/dashboard` || route.startsWith('/api/mock/packages/')))
+          || (req.method === 'PUT' && route === `/api/mock/customers/${own}/delivery-address`)
+          || (req.method === 'POST' && ['/api/mock/prealerts', '/api/mock/pickups'].includes(route))
+        if (!permitted) return send(403, { error: 'You do not have access to this operation.' })
+      }
       if (req.method === 'GET' && url.pathname === '/api/mock/bootstrap') {
-        return send(200, { config: db.config, customers: db.customers })
+        const { companyName, miamiAddress, receivingHours } = db.config
+        const config = isStaff ? db.config : { companyName, miamiAddress, receivingHours }
+        const customers = isStaff ? db.customers : db.customers.filter(item => item.id === own)
+        return send(200, { config, customers, identity })
       }
       const dashboard = url.pathname.match(/^\/api\/mock\/customers\/([^/]+)\/dashboard$/)
       if (req.method === 'GET' && dashboard) {
@@ -95,7 +137,7 @@ export function createMockServer({ dataFile = process.env.MOCK_DATA_FILE || defa
       const packagePath = url.pathname.match(/^\/api\/mock\/packages\/([^/]+)$/)
       if (req.method === 'GET' && packagePath) {
         const pkg = db.packages.find(item => item.id === packagePath[1] || item.label === packagePath[1] || item.tracking === packagePath[1])
-        if (!pkg || pkg.customerId !== url.searchParams.get('customerId')) return send(404, { error: 'Package not found for this demo customer' })
+        if (!pkg || (!isStaff && pkg.customerId !== own) || pkg.customerId !== url.searchParams.get('customerId')) return send(404, { error: 'Package not found for this demo customer' })
         return send(200, pkg)
       }
       if (req.method === 'GET' && url.pathname === '/api/mock/receiving/queue') {
@@ -126,10 +168,21 @@ export function createMockServer({ dataFile = process.env.MOCK_DATA_FILE || defa
         return pkg ? send(200, pkg) : send(404, { error: 'No package found' })
       }
       if (req.method === 'POST' && url.pathname === '/api/mock/reset') {
-        return send(200, await modify(async () => { state = createFixture(); return { reset: true } }))
+        return send(200, await modify(db => {
+          const sample = createFixture()
+          const sampleIds = new Set(sample.customers.map(customer => customer.id))
+          const keep = item => !sampleIds.has(item.customerId)
+          for (const key of ['packages', 'quotes', 'labels', 'prealerts', 'pickups']) {
+            db[key] = [...sample[key], ...(db[key] || []).filter(keep)]
+          }
+          db.customers = [...sample.customers, ...db.customers.filter(customer => !sampleIds.has(customer.id))]
+          db.config = sample.config
+          return { reset: true }
+        }))
       }
       if (!['POST', 'PUT'].includes(req.method)) return send(405, { error: 'Method not allowed' })
       const body = await readJson(req)
+      if (!isStaff && !registering && req.method === 'POST' && body.customerId !== own) return send(403, { error: 'Select your own customer account.' })
       const addressRoute = url.pathname.match(/^\/api\/mock\/customers\/([^/]+)\/delivery-address$/)
       if (req.method === 'PUT' && addressRoute) {
         const address = requiredString(body.deliveryAddress, 'Delivery address', 600)
@@ -140,16 +193,37 @@ export function createMockServer({ dataFile = process.env.MOCK_DATA_FILE || defa
         })
         return send(200, customer)
       }
-      if (req.method === 'POST' && url.pathname === '/api/mock/customers') {
+      if (registering || (req.method === 'POST' && route === '/api/mock/customers')) {
+        let profile = {}
+        if (registering) {
+          if (body.password !== body.confirmPassword) throw httpError(400, 'Passwords must match.')
+          const firstName = requiredString(body.firstName, 'First name', 60)
+          const lastName = requiredString(body.lastName, 'Last name', 60)
+          const company = optionalString(body.company, 'Company', 120)
+          const country = choice(body.country, ['Honduras'], 'destination country')
+          const region = requiredString(body.region, 'Department', 80)
+          const city = requiredString(body.city, 'City', 80)
+          const postal = requiredString(body.postalCode, 'Postal code', 16)
+          const lines = [requiredString(body.street, 'Street address', 140), optionalString(body.line2, 'Address line 2', 80), optionalString(body.line3, 'Address line 3', 80)]
+          profile = { firstName, lastName, company }
+          body.name = firstName + ' ' + lastName
+          body.kind = company ? 'business' : 'individual'
+          body.deliveryAddress = [...lines.filter(Boolean), city + ', ' + region + ' ' + postal, country].join('\n')
+        }
         const input = {
+          ...profile,
           kind: choice(body.kind || 'individual', ['individual', 'business'], 'kind'),
-          name: requiredString(body.name, 'name', 120),
+          name: requiredString(body.name, 'name', 121),
           phone: requiredString(body.phone, 'phone', 60),
           email: optionalString(body.email, 'email', 160),
           deliveryAddress: optionalString(body.deliveryAddress, 'Delivery address', 600),
         }
         if (input.phone.replace(/\D/g, '').length < 7) throw httpError(400, 'Enter a contact phone with at least 7 digits')
         if (input.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) throw httpError(400, 'Enter a valid email address')
+        if (registering && !input.email) throw httpError(400, 'Enter your email address.')
+        if (input.email?.toLowerCase() === staffEmail) throw httpError(409, 'This email already has an account.')
+        const digest = registering || body.password ? await hashPassword(body.password) : null
+        if (digest && !input.email) throw httpError(400, 'An email is required for portal access.')
         const customer = await modify(db => {
           if (db.customers.some(item => item.name.trim().toLowerCase() === input.name.toLowerCase() && normalizedPhone(item.phone) === normalizedPhone(input.phone))) {
             throw httpError(409, 'This customer and phone already have an account. Select the existing account.')
@@ -163,9 +237,11 @@ export function createMockServer({ dataFile = process.env.MOCK_DATA_FILE || defa
           while (db.customers.some(item => item.accountCode === accountCode))
           db.nextCustomerNumber = number
           const record = { id: `cus_${randomUUID().slice(0, 8)}`, ...input, accountCode, createdAt: new Date().toISOString() }
+          if (digest) { db.passwords ||= {}; db.passwords[record.id] = digest }
           db.customers.push(record)
           return record
         })
+        if (registering) auth.start(req, res, { role: 'customer', customerId: customer.id })
         return send(201, customer)
       }
       if (req.method === 'PUT' && url.pathname === '/api/mock/config') {
@@ -284,6 +360,7 @@ export function createMockServer({ dataFile = process.env.MOCK_DATA_FILE || defa
       if (!error.status) console.error(error)
     }
   })
+  server.once('close', () => auth.close())
   return server
 }
 

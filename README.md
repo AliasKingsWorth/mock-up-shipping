@@ -9,6 +9,18 @@ npm start
 
 Open <http://127.0.0.1:4175> for the demo or <http://127.0.0.1:4175/HOW_IT_WORKS.html> for the walkthrough. Press Ctrl+C in the terminal to stop the server.
 
+## Sign in
+
+| Role | Page | Demo email | Demo password |
+|---|---|---|---|
+| Customer (Ana) | `/login` | `ana@example.test` | `CustomerDemo24!` |
+| Customer (Miguel) | `/login` | `miguel@example.test` | `CustomerDemo24!` |
+| Receiving staff | `/staff/login` | `desk@example.test` | `StaffDemo24!` |
+
+Use `/register` to create a customer account with a Honduras destination. Sign-up opens the new customer's portal immediately. Staff sign-in opens the receiving desk with access to demo settings. When creating a walk-in account, staff can set an email and portal password.
+
+For a hosted demo, set `DEMO_STAFF_PASSWORD` (10–128 characters) in Hostinger to replace the shared staff password. The staff account can read all customers and shipments. New passwords are stored as salted scrypt hashes. Browser sessions expire after eight hours or a server restart.
+
 The portal shows each customer’s Miami receiving code and Honduras delivery address alongside shipment activity. Customers and desk staff can update the destination. Confirming intake copies the address onto the package and its printable receipt. Accounts awaiting an address can still use counter intake.
 
 The Chrome check writes desktop and mobile previews, including `public/previews/preview-intake.png` for the blank receiving form. These screenshots are generated from the working mock server, not static design comps.
@@ -34,7 +46,7 @@ The build checks JavaScript syntax. The Node server serves the browser files and
 1. Use Ana's customer portal to copy the Miami receiving address and account code, announce a package, or request a South Florida collection.
 2. Open **Receiving desk**. For a new walk-in customer, create an individual or business account at the counter; its Miami code is selected for the box immediately. For a collection, mark the request collected. Select the customer account, generate and print a QR label, enter the box contents, optional carrier reference, dimensions, condition and shelf, and add up to two photos. A walk-in counter drop-off works without carrier tracking.
 3. Scan the printed QR with a USB scanner, device camera, or image file. The scan selects the matching customer or reopens a previously received box. Confirm receipt, print the initial receipt, and create or print a draft freight quote. Scan lookup also accepts carrier tracking numbers. Recent received boxes can be reopened after a browser reload.
-4. Open **Demo setup** to edit the receiving address, contact details, hours, and draft quote rates. **Restore sample data** resets all changes.
+4. Open **Demo setup** to edit the receiving address, contact details, hours, and draft quote rates. **Restore sample data** restores the sample customers’ shipments and warehouse settings. Other accounts and their shipments are preserved.
 
 Demo changes persist to `phase1-customer-mockup/.local/state.json` across browser reloads. The folder is ignored by Git. Test the API with `npm test` and the Chrome workflow with `npm run test:browser`. Run `node tests/customer-journey-audit.mjs` for the customer persona review, `node tests/staff-journey-audit.mjs` for the receiving desk review, and `node tests/counter-double-submit-audit.mjs` for duplicate counter submissions. These checks use temporary data files.
 
@@ -60,4 +72,4 @@ Demo changes persist to `phase1-customer-mockup/.local/state.json` across browse
 | `PUT /api/mock/config` | Save mock configuration |
 | `POST /api/mock/reset` | Restore sample records |
 
-The UI uses these routes, so browser changes are saved on the local mock server rather than only in memory. The fixture includes two customers and boxes at several journey stages to demonstrate tracking. Those later stages are display-only samples; Phase 1 has no manifest, customs, payment, or final handoff actions. This demo has no real authentication, private photo storage, live collection scheduling, or freight commitment. Use the production API for those operations.
+The UI uses these routes, so browser changes are saved on the local mock server rather than only in memory. The fixture includes two customers and boxes at several journey stages to demonstrate tracking. Those later stages are display-only samples; Phase 1 has no manifest, customs, payment, or final handoff actions. Photos and customer records share local JSON storage. Collection requests and quotes are simulated. Use the production API for those operations.

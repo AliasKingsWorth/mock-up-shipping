@@ -11,9 +11,9 @@
 <body>
   <a class="skip-link" href="#app">Skip to workspace</a>
   <header class="topbar">
-    <a class="brand" href="#customer" data-action="open-portal"><span class="brand-mark" aria-hidden="true">M</span><strong id="company-name">Miami ↔ Honduras Freight</strong></a>
-    <nav aria-label="Main navigation"><button class="nav-link active" data-view="customer">Customer portal</button><button class="nav-link" data-view="receiving">Receiving desk</button><button class="nav-link" data-view="setup">Demo setup</button></nav>
-    <select id="persona" aria-label="Choose demo customer"></select>
+    <a class="brand" href="/"><span class="brand-mark" aria-hidden="true">M</span><strong id="company-name">Miami ↔ Honduras Freight</strong></a>
+    <nav hidden aria-label="Staff navigation"><button class="nav-link" data-view="receiving">Receiving desk</button><button class="nav-link" data-view="setup">Demo setup</button></nav>
+    <button id="logout" class="btn btn-secondary" data-action="logout">Sign out</button>
   </header>
   <main id="app" class="main"><div class="loading-state">Loading accounts…</div></main>
   <dialog id="delivery-editor" aria-labelledby="delivery-title">

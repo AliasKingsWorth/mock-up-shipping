@@ -11,8 +11,14 @@ test('customer collection, receipt, tracking, quote, and persistence', async () 
   const server = createMockServer({ dataFile: file })
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
   const base = `http://127.0.0.1:${server.address().port}/api/mock`
+  const login = async base => {
+    const response = await fetch(base + '/auth/login', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ role: 'staff', email: 'desk@example.test', password: 'StaffDemo24!' }) })
+    assert.equal(response.status, 200)
+    return response.headers.get('set-cookie').split(';')[0]
+  }
+  const cookie = await login(base)
   const request = async (route, method = 'GET', body) => {
-    const response = await fetch(base + route, { method, headers: { 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) })
+    const response = await fetch(base + route, { method, headers: { cookie, 'content-type': 'application/json' }, body: body === undefined ? undefined : JSON.stringify(body) })
     return { status: response.status, data: await response.json() }
   }
   const futureDate = new Date(Date.now() + 7 * 86_400_000).toISOString().slice(0, 10)
@@ -95,10 +101,12 @@ test('customer collection, receipt, tracking, quote, and persistence', async () 
     const reopened = createMockServer({ dataFile: file })
     await new Promise(resolve => reopened.listen(0, '127.0.0.1', resolve))
     try {
-      const response = await fetch(`http://127.0.0.1:${reopened.address().port}/api/mock/customers/cus_ana/dashboard`)
+      const restarted = `http://127.0.0.1:${reopened.address().port}/api/mock`
+      const headers = { cookie: await login(restarted) }
+      const response = await fetch(restarted + '/customers/cus_ana/dashboard', { headers })
       const persisted = await response.json()
       assert.ok(persisted.packages.some(item => item.id === pkg.id))
-      const createdAfterRestart = await fetch(`http://127.0.0.1:${reopened.address().port}/api/mock/customers/${created.data.id}/dashboard`).then(response => response.json())
+      const createdAfterRestart = await fetch(`${restarted}/customers/${created.data.id}/dashboard`, { headers }).then(response => response.json())
       assert.equal(createdAfterRestart.customer.accountCode, created.data.accountCode)
       assert.equal(createdAfterRestart.customer.deliveryAddress, 'Nueva dirección, La Ceiba')
       assert.equal(createdAfterRestart.packages[0].deliveryAddress, destination)

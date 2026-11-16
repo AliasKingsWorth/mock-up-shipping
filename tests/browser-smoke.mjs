@@ -1,4 +1,6 @@
+import { signIn } from './sign-in.mjs'
 import { chromium } from 'playwright'
+import assert from 'node:assert/strict'
 import { mkdtemp, rm } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
@@ -16,7 +18,38 @@ const page = await browser.newPage({ viewport: { width: 1440, height: 1000 }, de
 const errors = []
 page.on('pageerror', error => errors.push(error.message))
 try {
-  await page.goto(url)
+  await page.goto(url + '/receiving')
+  assert.equal(new URL(page.url()).pathname, '/staff/login')
+  assert.equal((await page.request.get(url + '/api/mock/bootstrap')).status(), 401)
+  await page.getByRole('link', { name: 'Customer sign in' }).click()
+  await page.getByRole('link', { name: 'Create customer account' }).click()
+  const registration = { firstName: 'Rosa', lastName: 'Santos', phone: '9999-4321', company: 'Sample shop', city: 'La Ceiba', postalCode: '00000', street: 'Casa 8', line2: 'Colonia Ejemplo', line3: 'Frente al parque', email: 'rosa@example.test', password: 'RosaExample24!', confirmPassword: 'wrong-confirmation' }
+  for (const [id, value] of Object.entries(registration)) await page.locator('#' + id).fill(value)
+  await page.getByLabel('State / department').selectOption('Atlántida')
+  await page.getByRole('button', { name: 'Create account' }).click()
+  await page.getByRole('alert').getByText('Passwords must match.').waitFor()
+  await page.getByLabel('Confirm password').fill(registration.password)
+  await page.getByRole('button', { name: 'Create account' }).click()
+  await page.waitForURL(url + '/portal')
+  await page.getByRole('heading', { name: 'Rosa Santos' }).waitFor()
+  assert.ok((await page.locator('.delivery-summary').innerText()).includes('La Ceiba, Atlántida 00000'))
+  const boot = await (await page.request.get(url + '/api/mock/bootstrap')).json()
+  assert.deepEqual(boot.customers.map(c => c.email), [registration.email])
+  for (const path of ['/receiving/queue', '/customers/cus_ana/dashboard']) {
+    assert.equal((await page.request.get(url + '/api/mock' + path)).status(), 403)
+  }
+  assert.equal((await page.request.post(url + '/api/mock/pickups', { data: { customerId: 'cus_ana' } })).status(), 403)
+  assert.equal((await page.request.post(url + '/api/mock/reset', { data: {} })).status(), 403)
+  assert.equal((await page.request.get(url + '/api/mock/packages/PKG-1048?customerId=cus_ana')).status(), 404)
+  await page.goto(url + '/receiving')
+  assert.equal(new URL(page.url()).pathname, '/portal')
+  await signIn(page, url, registration.email, registration.password)
+  await page.locator('#logout').click()
+  await page.waitForURL(url + '/login')
+  assert.equal((await page.request.get(url + '/api/mock/bootstrap')).status(), 401)
+  const wrongRole = await page.request.post(url + '/api/mock/auth/login', { data: { email: registration.email, password: registration.password, role: 'staff' } })
+  assert.equal(wrongRole.status(), 401)
+  await signIn(page, url)
   await page.getByRole('heading', { name: /^Ana\b/ }).waitFor()
   await page.evaluate(() => document.fonts.ready)
   for (const font of ['/fonts/dm-sans.woff2', '/fonts/fraunces.woff2']) {
@@ -40,7 +73,7 @@ try {
   await page.locator('#pu-date').fill(futureDate)
   await page.getByRole('button', { name: 'Send collection request' }).click()
   await page.getByText('123 Demo Lane, Miami, FL 33166').waitFor()
-  await page.locator('[data-view="receiving"]').click()
+  await signIn(page, url, 'desk@example.test')
   if (!(await page.locator('.desk-address').innerText()).includes(destination)) throw new Error('Receiving desk lost the saved delivery address')
   await page.locator('#rc-contents').fill('Intake in progress')
   await page.locator('.desk-address button').click()
@@ -94,7 +127,7 @@ try {
   }
   await page.screenshot({ path: path.join(previews, 'preview-receiving.png'), fullPage: true, animations: 'disabled' })
   await page.reload()
-  await page.locator('[data-view="receiving"]').click()
+  await signIn(page, url, 'desk@example.test')
   await page.locator('#lookup-form input').fill('COLL-TEST-01')
   await page.locator('#lookup-form button').click()
   await page.getByRole('heading', { name: 'Initial receiving receipt' }).waitFor()
@@ -114,7 +147,7 @@ try {
   await page.waitForFunction(() => document.querySelector('#rc-label')?.value.startsWith('MIA-'))
   const walkInLabel = await page.locator('#rc-label').inputValue()
   await page.reload()
-  await page.locator('[data-view="receiving"]').click()
+  await signIn(page, url, 'desk@example.test')
   const qrImage = await (await page.request.get(`${url}/api/mock/labels/${encodeURIComponent(walkInLabel)}`)).json()
   await page.locator('#qr-file').setInputFiles({ name: 'label.png', mimeType: 'image/png', buffer: Buffer.from(qrImage.qr.split(',')[1], 'base64') })
   await page.getByRole('button', { name: 'Print sticker' }).waitFor()
@@ -139,14 +172,14 @@ try {
   await page.getByRole('button', { name: 'Receive another box' }).click()
   await page.getByRole('button', { name: 'Open' }).first().click()
   await page.getByRole('heading', { name: 'Initial receiving receipt' }).waitFor()
-  await page.locator('[data-view="customer"]').click()
+  await signIn(page, url, 'miguel@example.test')
   await page.getByText('Counter drop-off tools').first().waitFor()
-  await page.locator('[data-view="receiving"]').click()
-  await page.getByRole('button', { name: 'Receive another box' }).click()
+  await signIn(page, url, 'desk@example.test')
   await page.locator('.customer-create summary').click()
   await page.locator('#new-name').fill('Lucía Rivera')
   await page.locator('#new-phone').fill('3055550111')
   await page.locator('#new-email').fill('lucia@example.test')
+  await page.locator('#new-password').fill('LuciaExample75!')
   await page.locator('#new-delivery').fill('Casa 12, Barrio Ejemplo, La Ceiba')
   await page.getByRole('button', { name: 'Create customer & select account' }).click()
   await page.locator('.new-customer-notice').waitFor()
@@ -165,18 +198,18 @@ try {
   await page.locator('#rc-height').fill('20')
   await page.getByRole('button', { name: 'Confirm receipt' }).click()
   await page.getByRole('heading', { name: 'Initial receiving receipt' }).waitFor()
-  await page.locator('[data-view="customer"]').click()
+  await signIn(page, url, 'lucia@example.test', 'LuciaExample75!')
   await page.getByText('Family gifts').first().waitFor()
-  if (await page.locator('#persona').inputValue() !== createdCustomer.id) throw new Error('Customer portal did not open the newly created account')
+  await page.getByRole('heading', { name: 'Lucía Rivera' }).waitFor()
   const createdDashboard = await (await page.request.get(`${url}/api/mock/customers/${createdCustomer.id}/dashboard`)).json()
   if (createdDashboard.customer.deliveryAddress !== 'Casa 12, Barrio Ejemplo, La Ceiba' || createdDashboard.packages[0].deliveryAddress !== createdDashboard.customer.deliveryAddress) throw new Error('Walk-in delivery address missing from account or receipt')
   if (!createdDashboard.packages.some(item => item.label === createdLabel)) throw new Error('New customer package did not appear in tracking')
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 1 })
-  await mobile.goto(url)
+  await signIn(mobile, url)
   await mobile.getByRole('heading', { name: /^Ana\b/ }).waitFor()
   await mobile.evaluate(() => document.fonts.ready)
   await mobile.screenshot({ path: path.join(previews, 'preview-mobile.png'), fullPage: true, animations: 'disabled' })
-  await mobile.locator('[data-view="receiving"]').click()
+  await signIn(mobile, url, 'desk@example.test')
   await mobile.screenshot({ path: path.join(previews, 'preview-receiving-mobile.png'), fullPage: true, animations: 'disabled' })
   const mobileWidth = await mobile.evaluate(() => ({ content: document.documentElement.scrollWidth, viewport: window.innerWidth }))
   if (mobileWidth.content > mobileWidth.viewport + 1) throw new Error(`Receiving page overflows mobile width: ${JSON.stringify(mobileWidth)}`)
@@ -185,19 +218,20 @@ try {
     const responsive = await browser.newPage({ viewport: { width, height: 850 } })
     try {
       if (width === 768) await responsive.emulateMedia({ reducedMotion: 'reduce' })
-      await responsive.goto(url)
+      await signIn(responsive, url)
       await responsive.getByRole('heading', { name: /^Ana\b/ }).waitFor()
       if (width === 768) {
         const duration = await responsive.locator('.card').first().evaluate(node => parseFloat(getComputedStyle(node).animationDuration))
         if (duration > .001) throw new Error(`Reduced-motion animation remains active: ${duration}s`)
       }
       for (const view of ['customer', 'receiving']) {
-        if (view === 'receiving') await responsive.locator('[data-view="receiving"]').click()
+        if (view === 'receiving') await signIn(responsive, url, 'desk@example.test')
         const size = await responsive.evaluate(() => ({ content: document.documentElement.scrollWidth, viewport: window.innerWidth }))
         if (size.content > size.viewport + 1) throw new Error(`${view} overflows at ${width}px: ${JSON.stringify(size)}`)
       }
     } finally { await responsive.close() }
   }
+  await signIn(page, url, 'desk@example.test')
   await page.locator('[data-view="setup"]').click()
   await page.locator('#cfg-name').fill('Demo Freight Co')
   await page.locator('#cfg-address').fill('200 Demo Street, Miami, FL 33166')

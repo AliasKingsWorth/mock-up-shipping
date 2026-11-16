@@ -1,3 +1,4 @@
+import { signIn } from './sign-in.mjs'
 import { chromium } from 'playwright'
 import { mkdtemp, rm } from 'node:fs/promises'
 import os from 'node:os'
@@ -11,8 +12,8 @@ const base = `http://127.0.0.1:${server.address().port}`
 const browser = await chromium.launch({ channel: 'chrome', headless: true })
 try {
   const page = await browser.newPage()
-  await page.goto(base)
-  await page.locator('[data-view="receiving"]').click()
+  await signIn(page, base)
+  await signIn(page, base, 'desk@example.test')
   await page.locator('.customer-create summary').click()
   await page.locator('#new-name').fill('Duplicate Walk-In')
   await page.locator('#new-phone').fill('+1 305 555 0100')
