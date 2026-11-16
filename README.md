@@ -13,6 +13,22 @@ The visual pass uses the global `ui-ux-pro-max`, `design-taste-frontend`, and Op
 
 The Chrome check writes desktop and mobile previews, including `public/previews/preview-intake.png` for the blank receiving form. These screenshots are generated from the working mock server, not static design comps.
 
+## Deploy the demo on Hostinger
+
+Upload a ZIP with `package.json` at the top level. When updating an existing upload, select the new ZIP under **Source files**.
+
+| Setting | Value |
+|---|---|
+| Framework and Node version | Other, Node 24.x |
+| Root directory | Archive root (`.`) |
+| Package manager | npm |
+| Build command | `npm run build` |
+| Output directory | Leave empty |
+| Entry file | `serve.js` |
+| Environment variable | `NODE_ENV=production` |
+
+The build checks JavaScript syntax. The Node server serves the browser files and API directly. In production it listens on the supplied `PORT`, defaulting to 3000.
+
 ## What to try
 
 1. Use Ana's customer portal to copy the Miami receiving address and account code, announce a package, or request a South Florida collection.

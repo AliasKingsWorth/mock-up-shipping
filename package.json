@@ -3,11 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "main": "serve.js",
   "engines": {
     "node": ">=24.14"
   },
   "scripts": {
-    "start": "node serve",
+    "build": "node --check serve.js && node --check server/server.mjs && node --check public/app.js",
+    "start": "node serve.js",
     "test": "node --test tests/server.test.mjs",
     "test:browser": "node tests/browser-smoke.mjs"
   },

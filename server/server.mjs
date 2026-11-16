@@ -321,8 +321,10 @@ async function readJson(req) {
 
 export function startMockServer() {
   const server = createMockServer()
-  const port = Number(process.env.MOCK_PORT || 4175)
-  server.listen(port, '127.0.0.1', () => console.log(`Phase 1 mockup: http://127.0.0.1:${server.address().port}`))
+  const production = process.env.NODE_ENV === 'production'
+  const port = Number(process.env.PORT || process.env.MOCK_PORT || (production ? 3000 : 4175))
+  const host = production || process.env.PORT ? '0.0.0.0' : '127.0.0.1'
+  server.listen(port, host, () => console.log(`Phase 1 mockup: http://${host}:${server.address().port}`))
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
