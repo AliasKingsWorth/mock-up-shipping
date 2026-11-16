@@ -9,7 +9,7 @@ npm start
 
 Open <http://127.0.0.1:4175> for the demo or <http://127.0.0.1:4175/HOW_IT_WORKS.html> for the walkthrough. Press Ctrl+C in the terminal to stop the server.
 
-The visual pass uses the global `ui-ux-pro-max`, `design-taste-frontend`, and OpenAI `frontend-skill`, plus the project's `humanize-dashboard-design` skill. The customer page leads with the Miami address and tracking, while the desk groups intake into customer, label, and box-check steps. The mockup applies the humanize skill's warm typography, quiet color and practical microcopy without adding a dashboard framework or charts to this standalone flow. Edit `public/theme.css` to change colors, type, radii and shadows; `public/styles.css` contains the layout and components. Fonts are served locally from the installed Fontsource packages.
+The portal shows each customer’s Miami receiving code and Honduras delivery address alongside shipment activity. Customers and desk staff can update the destination. Confirming intake copies the address onto the package and its printable receipt. Accounts awaiting an address can still use counter intake.
 
 The Chrome check writes desktop and mobile previews, including `public/previews/preview-intake.png` for the blank receiving form. These screenshots are generated from the working mock server, not static design comps.
 
@@ -43,6 +43,7 @@ Demo changes persist to `phase1-customer-mockup/.local/state.json` across browse
 | Route | Purpose |
 |---|---|
 | `GET /api/mock/bootstrap` | Company setup and demo customers |
+| `PUT /api/mock/customers/:id/delivery-address` | Update the customer’s Honduras delivery address |
 | `POST /api/mock/customers` | Create a walk-in customer and assign a Miami account code |
 | `GET /api/mock/customers/:id/dashboard` | Customer packages, pre-alerts, collections, quotes |
 | `GET /api/mock/packages/:id?customerId=...` | Demo customer package detail |

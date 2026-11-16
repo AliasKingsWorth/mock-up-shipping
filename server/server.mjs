@@ -130,12 +130,23 @@ export function createMockServer({ dataFile = process.env.MOCK_DATA_FILE || defa
       }
       if (!['POST', 'PUT'].includes(req.method)) return send(405, { error: 'Method not allowed' })
       const body = await readJson(req)
+      const addressRoute = url.pathname.match(/^\/api\/mock\/customers\/([^/]+)\/delivery-address$/)
+      if (req.method === 'PUT' && addressRoute) {
+        const address = requiredString(body.deliveryAddress, 'Delivery address', 600)
+        const customer = await modify(db => {
+          const record = findCustomer(db, addressRoute[1])
+          record.deliveryAddress = address
+          return record
+        })
+        return send(200, customer)
+      }
       if (req.method === 'POST' && url.pathname === '/api/mock/customers') {
         const input = {
           kind: choice(body.kind || 'individual', ['individual', 'business'], 'kind'),
           name: requiredString(body.name, 'name', 120),
           phone: requiredString(body.phone, 'phone', 60),
           email: optionalString(body.email, 'email', 160),
+          deliveryAddress: optionalString(body.deliveryAddress, 'Delivery address', 600),
         }
         if (input.phone.replace(/\D/g, '').length < 7) throw httpError(400, 'Enter a contact phone with at least 7 digits')
         if (input.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(input.email)) throw httpError(400, 'Enter a valid email address')
@@ -236,6 +247,7 @@ export function createMockServer({ dataFile = process.env.MOCK_DATA_FILE || defa
           if (prealert) prealert.status = 'received'
           const pkg = {
             id: `pkg_${randomUUID().slice(0, 8)}`, ...input, customerId: customer.id,
+            deliveryAddress: customer.deliveryAddress || null,
             prealertId: prealert?.id || null, state: 'received', receivedAt: now,
             receiptNo: `RCV-${randomUUID().slice(0, 8).toUpperCase()}`,
             events: [{ kind: 'received', title: 'Received in Miami', detail: `${input.source === 'pickup' ? 'Collected from South Florida and' : 'Dropped off at Miami and'} placed on shelf ${input.shelf}.`, at: now, location: 'Miami warehouse' }],

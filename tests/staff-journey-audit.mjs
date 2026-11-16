@@ -48,13 +48,14 @@ const openPrint = async name => {
 
 try {
   await page.goto(base)
-  await page.getByRole('heading', { name: /Good (morning|afternoon|evening), Ana\./ }).waitFor()
+  await page.getByRole('heading', { name: /^Ana\b/ }).waitFor()
   await page.locator('#persona').selectOption('cus_miguel')
-  await page.getByRole('heading', { name: /Good (morning|afternoon|evening), Miguel\./ }).waitFor()
+  await page.getByRole('heading', { name: /^Miguel\b/ }).waitFor()
+  await page.getByRole('button', { name: 'Request collection' }).click()
   await page.locator('#pu-address').fill('44 Sample Avenue, Hialeah, FL 33010')
   await page.locator('#pu-date').fill(futureDate)
   await page.locator('#pu-count').fill('2')
-  await page.getByRole('button', { name: 'Request collection' }).click()
+  await page.getByRole('button', { name: 'Send collection request' }).click()
   await page.getByText('44 Sample Avenue, Hialeah, FL 33010').waitFor()
 
   await page.locator('[data-view="receiving"]').click()

@@ -22,7 +22,7 @@ async function refresh() {
   persona.replaceChildren(...S.bootstrap.customers.map(customer => {
     const option = document.createElement('option')
     option.value = customer.id
-    option.textContent = `${customer.name} · Customer`
+    option.textContent = customer.name
     return option
   }))
   persona.value = S.customerId
@@ -36,13 +36,14 @@ function error(error) {
   if (message === 'Failed to fetch') return toast('The local demo server is unavailable. Check that it is running and try again.')
   toast(message)
 }
-function greeting(name) {
-  const hour = new Date().getHours()
-  return `Good ${hour < 12 ? 'morning' : hour < 17 ? 'afternoon' : 'evening'}, ${name}.`
-}
 function field(name, label, type = 'text', value = '', extra = '') { return `<div class="field"><label for="${name}">${label}</label><input id="${name}" name="${name}" type="${type}" value="${escapeHtml(value)}" ${extra}></div>` }
 function badge(value) { return `<span class="badge ${escapeHtml(value)}">${escapeHtml(title(value))}</span>` }
-function sectionHead(kicker, heading, description, actions = '') { return `<div class="page-head"><div><div class="eyebrow">${kicker}</div><h1>${heading}</h1><p>${description}</p></div><div class="head-actions">${actions}</div></div>` }
+function sectionHead(heading, actions = '') {
+  return `<div class="page-head"><h1>${heading}</h1><div class="head-actions">${actions}</div></div>`
+}
+function addressSummary(customer) {
+  return `<div class="address-title"><h2>Honduras delivery address</h2><button type="button" class="text-button" data-edit-address="${escapeHtml(customer.id)}">${customer.deliveryAddress ? 'Edit address' : 'Add address'}</button></div><p class="address-lines">${escapeHtml(customer.deliveryAddress || 'No delivery address on file.')}</p>`
+}
 function render() {
   stopCamera()
   if (!S.bootstrap || !S.dashboard || !S.queue) return
@@ -58,11 +59,9 @@ function render() {
   if (S.view === 'receiving') enhanceReceivingView()
 }
 function enhanceCustomerView() {
-  $('#app .page-head h1').textContent = greeting(S.dashboard.customer.name.split(' ')[0])
-  $('#app .page-head p').textContent = 'Your Miami receiving details and the latest movement of every box.'
   $('#pu-date').min = miamiToday()
-  const empty = $('#app .empty')
-  if (empty) empty.textContent = S.tab === 'packages' ? 'Your first box will show here after its Miami scan.' : S.tab === 'prealerts' ? 'Nothing expected yet. Add the seller’s tracking number below.' : 'No collection planned yet. Send a request below.'
+  const empty = $('.activity-grid .empty')
+  if (empty) empty.textContent = S.tab === 'packages' ? 'Your first box will show here after its Miami scan.' : S.tab === 'prealerts' ? 'No expected deliveries. Choose Announce a package to add one.' : 'No collections requested.'
 }
 function showLoadError(loadError) {
   error(loadError)
@@ -72,37 +71,38 @@ function customerView() {
   const { customer, packages, prealerts, pickups, quotes } = S.dashboard
   const selected = packages.find(item => item.id === S.selectedPackageId) || packages[0]
   S.selectedPackageId = selected?.id || null
-  const active = packages.filter(item => !['delivered'].includes(item.state)).length
-  return `${sectionHead('CUSTOMER ACCOUNT · ' + escapeHtml(customer.accountCode), `Welcome back, ${escapeHtml(customer.name.split(' ')[0])}.`, 'Track your boxes and prepare deliveries to Miami.')}
-  <div class="customer-overview"><div class="address-card"><div class="address-top"><span class="eyebrow">YOUR MIAMI RECEIVING ADDRESS</span><span class="address-route">MIA <span>→</span> HND</span></div><h2>${escapeHtml(S.bootstrap.config.miamiAddress)}</h2><div class="address-bottom"><p>Write <strong>${escapeHtml(customer.accountCode)}</strong> on every box you send.</p><button class="btn btn-small" data-action="copy-address">Copy address + code</button></div><div class="address-hours">${escapeHtml(S.bootstrap.config.receivingHours)}</div></div><div class="overview-aside"><div class="overview-heading">AT A GLANCE <span>YOUR ACCOUNT</span></div><div class="metric-row"><span class="metric-number">${active}</span><span><strong>Packages in progress</strong><small>Across Miami and Honduras</small></span></div><div class="metric-row"><span class="metric-number">${prealerts.filter(item => item.status === 'expected').length}</span><span><strong>Expected deliveries</strong><small>Waiting for the Miami scan</small></span></div><div class="overview-note">Bring a box to the Miami counter or request collection below. Its first scan appears in your package journey.</div></div></div>
-  <div class="grid grid-wide section-space activity-grid"><div class="card"><div class="card-head card-pad" style="padding-bottom:0"><div><div class="eyebrow">LIVE TRACKING</div><h2>My packages</h2><p>Open a box to see its contents and journey.</p></div></div><div class="tabs" aria-label="Package activity"><button class="tab ${S.tab === 'packages' ? 'active' : ''}" data-tab="packages" aria-pressed="${S.tab === 'packages'}">Packages (${packages.length})</button><button class="tab ${S.tab === 'prealerts' ? 'active' : ''}" data-tab="prealerts" aria-pressed="${S.tab === 'prealerts'}">Expected (${prealerts.length})</button><button class="tab ${S.tab === 'pickups' ? 'active' : ''}" data-tab="pickups" aria-pressed="${S.tab === 'pickups'}">Collections (${pickups.length})</button></div>${S.tab === 'packages' ? packages.map(item => `<button class="package-row ${item.id === selected?.id ? 'selected' : ''}" data-package="${escapeHtml(item.id)}"><span><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.contents)} · ${escapeHtml(item.carrier)}</small></span><span class="right">${badge(item.state)}<small>${date(item.receivedAt)}</small></span></button>`).join('') || '<div class="empty">Your first box will appear here after the Miami team scans it.</div>' : S.tab === 'prealerts' ? prealerts.map(item => `<div class="package-row"><span><strong>${escapeHtml(item.contents)}</strong><small>${escapeHtml(item.carrier)} · ${escapeHtml(item.tracking)}</small></span><span class="right">${badge(item.status)}<small>Expected ${date(item.expectedDate)}</small></span></div>`).join('') || '<div class="empty">No boxes expected yet. Add a seller delivery below.</div>' : pickups.map(item => `<div class="package-row"><span><strong>${escapeHtml(item.address)}</strong><small>${escapeHtml(item.packageCount)} package(s) · ${date(item.requestedDate)}</small></span><span class="right">${badge(item.status)}<small>${escapeHtml(item.id)}</small></span></div>`).join('') || '<div class="empty">No collection planned. Request one below.</div>'}</div>
-  <div class="card journey">${selected ? packageDetail(selected, quotes) : '<div class="empty">Choose a package to see its journey.</div>'}</div></div>
-  <div class="section-intro"><div class="eyebrow">BEFORE THE FIRST SCAN</div><h2>Getting a box to Miami</h2><p>Tell us what is coming, or arrange a South Florida collection.</p></div><div class="grid grid-2 section-space action-grid"><div class="card card-pad"><div class="card-head"><div><span class="form-number">01 / SELLER DELIVERY</span><h2>Announce a package</h2><p>Share the tracking number so the receiving team can match the box.</p></div></div><form id="prealert-form" class="form-grid">${field('pa-carrier', 'Carrier', 'text', '', 'required placeholder="UPS, FedEx, Amazon…"')}${field('pa-tracking', 'Carrier tracking number', 'text', '', 'required placeholder="1Z…"')}<div class="field full"><label for="pa-contents">Box contents</label><input id="pa-contents" name="contents" required placeholder="e.g. books and stationery"></div><div class="field"><label for="pa-mode">Preferred freight</label><select id="pa-mode" name="mode"><option value="air">Air</option><option value="ocean">Ocean</option></select></div>${field('pa-date', 'Expected at Miami', 'date', '', 'required')}<div class="field full"><div class="form-actions"><button class="btn btn-primary" type="submit">Save pre-alert →</button></div></div></form></div>
-  <div class="card card-pad"><div class="card-head"><div><span class="form-number">02 / SOUTH FLORIDA</span><h2>Request collection</h2><p>Share where and when our Miami team should collect your boxes.</p></div></div><form id="pickup-form" class="form-grid"><div class="field full"><label for="pu-address">Collection address</label><input id="pu-address" name="address" required placeholder="Street, city, ZIP in South Florida"></div>${field('pu-name', 'Contact name', 'text', customer.name, 'required')}${field('pu-phone', 'Contact phone', 'tel', customer.phone, 'required')}${field('pu-date', 'Requested date', 'date', '', 'required')}${field('pu-count', 'Number of boxes', 'number', 1, 'required min="1" max="1000"')}<div class="field full"><label for="pu-notes">Instructions</label><textarea id="pu-notes" name="notes" placeholder="Gate code, pickup window, box details…"></textarea></div><div class="field full"><div class="form-actions"><button class="btn btn-primary" type="submit">Request collection →</button></div></div></form></div></div>`
+  return `${sectionHead(escapeHtml(customer.name), '<button class="btn btn-secondary" data-open-dialog="collection-dialog">Request collection</button><button class="btn btn-primary" data-open-dialog="prealert-dialog">Announce a package</button>')}
+  <div class="account-addresses">
+    <section class="address-card"><div class="address-title"><h2>Miami receiving address</h2><button class="text-button" data-action="copy-address">Copy address + code</button></div>
+      <p>${escapeHtml(S.bootstrap.config.miamiAddress)}</p><small>Mark each box <strong>${escapeHtml(customer.accountCode)}</strong> · ${escapeHtml(S.bootstrap.config.receivingHours)}</small></section>
+    <section class="delivery-summary">${addressSummary(customer)}</section>
+  </div>
+  <div class="grid grid-wide section-space activity-grid ${S.tab === 'packages' && selected ? '' : 'list-only'}"><div class="card"><div class="card-head card-pad" style="padding-bottom:0"><div><h2>Shipment activity</h2></div></div><div class="tabs" aria-label="Package activity"><button class="tab ${S.tab === 'packages' ? 'active' : ''}" data-tab="packages" aria-pressed="${S.tab === 'packages'}">Packages (${packages.length})</button><button class="tab ${S.tab === 'prealerts' ? 'active' : ''}" data-tab="prealerts" aria-pressed="${S.tab === 'prealerts'}">Expected (${prealerts.length})</button><button class="tab ${S.tab === 'pickups' ? 'active' : ''}" data-tab="pickups" aria-pressed="${S.tab === 'pickups'}">Collections (${pickups.length})</button></div>${S.tab === 'packages' ? packages.map(item => `<button class="package-row ${item.id === selected?.id ? 'selected' : ''}" data-package="${escapeHtml(item.id)}"><span><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.contents)} · ${escapeHtml(item.carrier)}</small></span><span class="right">${badge(item.state)}<small>${date(item.receivedAt)}</small></span></button>`).join('') || '<div class="empty">Your first box will appear here after the Miami team scans it.</div>' : S.tab === 'prealerts' ? prealerts.map(item => `<div class="package-row"><span><strong>${escapeHtml(item.contents)}</strong><small>${escapeHtml(item.carrier)} · ${escapeHtml(item.tracking)}</small></span><span class="right">${badge(item.status)}<small>Expected ${date(item.expectedDate)}</small></span></div>`).join('') || '<div class="empty">No boxes expected yet. Add a seller delivery below.</div>' : pickups.map(item => `<div class="package-row"><span><strong>${escapeHtml(item.address)}</strong><small>${escapeHtml(item.packageCount)} package(s) · ${date(item.requestedDate)}</small></span><span class="right">${badge(item.status)}<small>${escapeHtml(item.id)}</small></span></div>`).join('') || '<div class="empty">No collection planned. Request one below.</div>'}</div>
+  ${selected && S.tab === 'packages' ? `<div class="card journey">${packageDetail(selected, quotes)}</div>` : ''}</div>
+  <dialog id="prealert-dialog" aria-labelledby="prealert-title"><div class="dialog-head"><h2 id="prealert-title">Announce a package</h2><button class="text-button" data-action="close-dialog">Cancel</button></div><form id="prealert-form" class="form-grid">${field('pa-carrier', 'Carrier', 'text', '', 'required placeholder="UPS, FedEx, Amazon…"')}${field('pa-tracking', 'Carrier tracking number', 'text', '', 'required placeholder="1Z…"')}<div class="field full"><label for="pa-contents">Box contents</label><input id="pa-contents" name="contents" required placeholder="e.g. books and stationery"></div><div class="field"><label for="pa-mode">Preferred freight</label><select id="pa-mode" name="mode"><option value="air">Air</option><option value="ocean">Ocean</option></select></div>${field('pa-date', 'Expected at Miami', 'date', '', 'required')}<div class="field full"><div class="form-actions"><button class="btn btn-primary" type="submit">Save pre-alert</button></div></div></form></dialog>
+  <dialog id="collection-dialog" aria-labelledby="collection-title"><div class="dialog-head"><h2 id="collection-title">South Florida collection</h2><button class="text-button" data-action="close-dialog">Cancel</button></div><form id="pickup-form" class="form-grid"><div class="field full"><label for="pu-address">Collection address</label><input id="pu-address" name="address" required placeholder="Street, city, ZIP in South Florida"></div>${field('pu-name', 'Contact name', 'text', customer.name, 'required')}${field('pu-phone', 'Contact phone', 'tel', customer.phone, 'required')}${field('pu-date', 'Requested date', 'date', '', 'required')}${field('pu-count', 'Number of boxes', 'number', 1, 'required min="1" max="1000"')}<div class="field full"><label for="pu-notes">Instructions</label><textarea id="pu-notes" name="notes" placeholder="Gate code, pickup window, box details…"></textarea></div><div class="field full"><div class="form-actions"><button class="btn btn-primary" type="submit">Send collection request</button></div></div></form></dialog>`
 }
 function packageDetail(pkg, quotes) {
   const quote = quotes.find(item => item.packageId === pkg.id)
-  return `<div class="eyebrow">PACKAGE JOURNEY</div><div class="detail-title"><div><h2>${escapeHtml(pkg.label)}</h2><p>${escapeHtml(pkg.contents)}</p></div>${badge(pkg.state)}</div><div class="fact-grid"><div class="fact"><small>Carrier tracking</small><strong>${escapeHtml(pkg.tracking || 'Counter drop-off')}</strong></div><div class="fact"><small>Freight preference</small><strong>${title(pkg.mode)}</strong></div><div class="fact"><small>Weight / dimensions</small><strong>${pkg.weightGrams ? `${(pkg.weightGrams / 1000).toFixed(2)} kg · ${(pkg.dimensionsCm || []).join(' × ')} cm` : 'Awaiting measurement'}</strong></div><div class="fact"><small>Condition / location</small><strong>${escapeHtml(pkg.condition || '—')} · ${escapeHtml(pkg.shelf || 'In transit')}</strong></div></div>${quote ? `<div class="notice">Draft freight estimate: <strong>${money(quote.amountUsdCents)}</strong> · ${escapeHtml(quote.id)}</div>` : ''}${pkg.photos?.length ? `<div class="photo-strip">${pkg.photos.map(src => `<img src="${src}" alt="Receiving photo">`).join('')}</div>` : ''}<div class="eyebrow">LATEST MOVEMENTS</div><div class="timeline">${(pkg.events || []).slice().reverse().map(event => `<div class="timeline-item"><strong>${escapeHtml(event.title)}</strong><p>${escapeHtml(event.detail)}</p><small>${stamp(event.at)} · ${escapeHtml(event.location)}</small></div>`).join('')}</div>`
+  return `<div class="detail-title"><div><h2>${escapeHtml(pkg.label)}</h2><p>${escapeHtml(pkg.contents)}</p></div>${badge(pkg.state)}</div><div class="fact-grid"><div class="fact"><small>Carrier tracking</small><strong>${escapeHtml(pkg.tracking || 'Counter drop-off')}</strong></div><div class="fact"><small>Freight preference</small><strong>${title(pkg.mode)}</strong></div><div class="fact"><small>Weight / dimensions</small><strong>${pkg.weightGrams ? `${(pkg.weightGrams / 1000).toFixed(2)} kg · ${(pkg.dimensionsCm || []).join(' × ')} cm` : 'Awaiting measurement'}</strong></div><div class="fact"><small>Condition / location</small><strong>${escapeHtml(pkg.condition || '—')} · ${escapeHtml(pkg.shelf || 'In transit')}</strong></div>${pkg.deliveryAddress ? `<div class="fact"><small>Delivery address at intake</small><strong class="address-lines">${escapeHtml(pkg.deliveryAddress)}</strong></div>` : ''}</div>${quote ? `<div class="notice">Draft freight estimate: <strong>${money(quote.amountUsdCents)}</strong> · ${escapeHtml(quote.id)}</div>` : ''}${pkg.photos?.length ? `<div class="photo-strip">${pkg.photos.map(src => `<img src="${src}" alt="Receiving photo">`).join('')}</div>` : ''}<h3 class="subheading">Tracking history</h3><div class="timeline">${(pkg.events || []).slice().reverse().map(event => `<div class="timeline-item"><strong>${escapeHtml(event.title)}</strong><p>${escapeHtml(event.detail)}</p><small>${stamp(event.at)} · ${escapeHtml(event.location)}</small></div>`).join('')}</div>`
 }
 function receivingView() {
   const customers = S.bootstrap.customers
   const queue = S.queue
-  const selectedCustomer = customers.find(item => item.id === S.customerId)
-  return `${sectionHead('MIAMI WAREHOUSE · INTAKE', 'Receiving desk', 'Record a counter drop-off or a South Florida collection, then hand over a labeled receipt.', '<button class="btn btn-secondary" data-action="refresh">Refresh queue</button>')}
-  <div class="flow" aria-label="Receiving steps"><span class="flow-step active">01 <strong>Identify customer</strong></span><span class="flow-arrow">→</span><span class="flow-step active">02 <strong>Label &amp; contents</strong></span><span class="flow-arrow">→</span><span class="flow-step active">03 <strong>Measure &amp; shelve</strong></span><span class="flow-arrow">→</span><span class="flow-step active">04 <strong>Issue receipt</strong></span></div>
-  <div class="grid grid-wide receiving-grid"><div class="card card-pad intake-card"><div class="card-head"><div><div class="eyebrow">NEW INTAKE</div><h2>Receive a package</h2><p>Capture the box as it arrives. Photos and measurements stay with its tracking record.</p></div><span class="badge received">Miami</span></div><div class="scan-box"><span class="scan-glyph" aria-hidden="true"></span><div><strong>Have a QR label already?</strong><small>Scan it below to find the customer. For a walk-in box, generate a new label.</small></div></div>
+  return `${sectionHead('Receiving desk', '<button class="btn btn-secondary" data-action="refresh">Refresh queue</button>')}
+  <div class="grid grid-wide receiving-grid"><div class="card card-pad intake-card"><div class="card-head"><h2>Receive a package</h2></div>
   ${S.newCustomer ? `<div class="new-customer-notice" role="status"><strong>${escapeHtml(S.newCustomer.name)} · ${escapeHtml(S.newCustomer.accountCode)}</strong><span>Account created and selected for this box. Generate its QR label below.</span></div>` : ''}
-  <details class="customer-create"><summary>Create a customer at the counter <span>New walk-in account</span></summary><form id="customer-create-form" class="form-grid"><div class="field"><label for="new-kind">Account type</label><select id="new-kind" name="kind"><option value="individual">Individual</option><option value="business">Business</option></select></div>${field('new-name', 'Customer or business name', 'text', '', 'required maxlength="120" autocomplete="name"')}${field('new-phone', 'Contact phone', 'tel', '', 'required maxlength="60" autocomplete="tel"')}${field('new-email', 'Email (optional)', 'email', '', 'maxlength="160" autocomplete="email"')}<div class="field full"><p class="small-note">Create the account first; then generate a QR label and receive the box under its new Miami code.</p><div class="form-actions"><button class="btn btn-primary" type="submit">Create customer &amp; select account</button></div></div></form></details>
-  <form id="receipt-form"><div class="form-grid"><div class="field"><label for="rc-account">Customer account</label><select id="rc-account" name="accountCode">${customers.map(item => `<option value="${escapeHtml(item.accountCode)}" ${item.id === S.customerId ? 'selected' : ''}>${escapeHtml(item.name)} · ${escapeHtml(item.accountCode)}</option>`).join('')}</select></div><div class="field"><label for="rc-source">Receiving source</label><select id="rc-source" name="source"><option value="dropoff">Customer counter drop-off</option><option value="pickup">South Florida collection</option></select></div><div class="field full" id="pickup-choice" hidden><label for="rc-pickup">Collected pickup</label><select id="rc-pickup" name="pickupId"><option value="">Select collected request</option>${queue.pickups.filter(item => item.status === 'collected').map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.id)} · ${escapeHtml(item.address)}</option>`).join('')}</select><span class="hint">Mark a collection as collected in the right-hand queue first.</span></div><div class="field full"><label for="rc-label">Package label / QR payload</label><div class="search-row"><input id="rc-label" name="label" value="${escapeHtml(S.label?.label || '')}" required placeholder="Generate label or scan existing QR"><button type="button" class="btn btn-light" data-action="generate-label">Generate QR</button></div></div>${field('rc-carrier', 'Carrier / source', 'text', '', 'required placeholder="Walk-in customer, UPS, FedEx…"')}${field('rc-tracking', 'Seller or collection reference', 'text', '', 'required placeholder="Counter reference or carrier tracking"')}<div class="field full"><label for="rc-contents">Box contents</label><input id="rc-contents" name="contents" required placeholder="Short description visible to the customer"></div><div class="field"><label for="rc-mode">Freight preference</label><select id="rc-mode" name="mode"><option value="air">Air</option><option value="ocean">Ocean</option></select></div><div class="field"><label for="rc-shelf">Miami shelf / bin</label><input id="rc-shelf" name="shelf" required placeholder="e.g. A-12"></div>${field('rc-weight', 'Measured weight (kg)', 'number', '', 'required min="0.01" step="0.01"')}${field('rc-length', 'Length (cm)', 'number', '', 'required min="1" step="0.1"')}${field('rc-width', 'Width (cm)', 'number', '', 'required min="1" step="0.1"')}${field('rc-height', 'Height (cm)', 'number', '', 'required min="1" step="0.1"')}<div class="field full"><label for="rc-condition">Outer box condition</label><input id="rc-condition" name="condition" required value="Intact" placeholder="Document tears, wet spots, dents…"></div><div class="field full"><label for="rc-photos">Receiving photos (up to 2)</label><input id="rc-photos" type="file" accept="image/jpeg,image/png,image/webp" multiple><span class="hint">Photos are resized and saved in local demo data.</span><div id="photo-previews" class="photo-previews">${S.photos.map(src => `<img src="${src}" alt="Receiving photo preview">`).join('')}</div></div></div><div class="form-actions"><button class="btn btn-primary" type="submit">Confirm receipt →</button></div></form>
+  <details class="customer-create"><summary>Create a walk-in account</summary><form id="customer-create-form" class="form-grid"><div class="field"><label for="new-kind">Account type</label><select id="new-kind" name="kind"><option value="individual">Individual</option><option value="business">Business</option></select></div>${field('new-name', 'Customer or business name', 'text', '', 'required maxlength="120" autocomplete="name"')}${field('new-phone', 'Contact phone', 'tel', '', 'required maxlength="60" autocomplete="tel"')}${field('new-email', 'Email (optional)', 'email', '', 'maxlength="160" autocomplete="email"')}<div class="field full"><label for="new-delivery">Honduras delivery address (optional)</label><textarea id="new-delivery" name="deliveryAddress" maxlength="600" placeholder="Street or colonia, city and department"></textarea></div><div class="field full"><div class="form-actions"><button class="btn btn-primary" type="submit">Create customer &amp; select account</button></div></div></form></details>
+  <form id="receipt-form"><div class="form-grid"><div class="field"><label for="rc-account">Customer account</label><select id="rc-account" name="accountCode">${customers.map(item => `<option value="${escapeHtml(item.accountCode)}" ${item.id === S.customerId ? 'selected' : ''}>${escapeHtml(item.name)} · ${escapeHtml(item.accountCode)}</option>`).join('')}</select></div><div class="field"><label for="rc-source">Receiving source</label><select id="rc-source" name="source"><option value="dropoff">Customer counter drop-off</option><option value="pickup">South Florida collection</option></select></div><div class="desk-address field full"></div><div class="field full" id="pickup-choice" hidden><label for="rc-pickup">Collected pickup</label><select id="rc-pickup" name="pickupId"><option value="">Select collected request</option>${queue.pickups.filter(item => item.status === 'collected').map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.id)} · ${escapeHtml(item.address)}</option>`).join('')}</select><span class="hint">Mark the request collected before receiving its boxes.</span></div><div class="field full"><label for="rc-label">Package label / QR payload</label><div class="search-row"><input id="rc-label" name="label" value="${escapeHtml(S.label?.label || '')}" required placeholder="Generate label or scan existing QR"><button type="button" class="btn btn-light" data-action="generate-label">Generate QR</button></div></div>${field('rc-carrier', 'Carrier / source', 'text', '', 'required placeholder="Walk-in customer, UPS, FedEx…"')}${field('rc-tracking', 'Seller or collection reference', 'text', '', 'required placeholder="Counter reference or carrier tracking"')}<div class="field full"><label for="rc-contents">Box contents</label><input id="rc-contents" name="contents" required placeholder="Short description visible to the customer"></div><div class="field"><label for="rc-mode">Freight preference</label><select id="rc-mode" name="mode"><option value="air">Air</option><option value="ocean">Ocean</option></select></div><div class="field"><label for="rc-shelf">Miami shelf / bin</label><input id="rc-shelf" name="shelf" required placeholder="e.g. A-12"></div>${field('rc-weight', 'Measured weight (kg)', 'number', '', 'required min="0.01" step="0.01"')}${field('rc-length', 'Length (cm)', 'number', '', 'required min="1" step="0.1"')}${field('rc-width', 'Width (cm)', 'number', '', 'required min="1" step="0.1"')}${field('rc-height', 'Height (cm)', 'number', '', 'required min="1" step="0.1"')}<div class="field full"><label for="rc-condition">Outer box condition</label><input id="rc-condition" name="condition" required value="Intact" placeholder="Document tears, wet spots, dents…"></div><div class="field full"><label for="rc-photos">Receiving photos (up to 2)</label><input id="rc-photos" type="file" accept="image/jpeg,image/png,image/webp" multiple><span class="hint">Photos are resized and saved in local demo data.</span><div id="photo-previews" class="photo-previews">${S.photos.map(src => `<img src="${src}" alt="Receiving photo preview">`).join('')}</div></div></div><div class="form-actions"><button class="btn btn-primary" type="submit">Confirm receipt</button></div></form>
   ${S.label ? `<div class="label-preview"><img src="${S.label.qr}" alt="QR code for ${escapeHtml(S.label.label)}"><div><small>PRINTABLE PACKAGE LABEL</small><strong>${escapeHtml(S.label.label)}</strong><span>${escapeHtml(S.label.customerName)} · ${escapeHtml(S.label.accountCode)}</span><br><button class="btn btn-secondary btn-small" data-action="print-label">Print sticker</button></div></div>` : ''}
-  ${S.receipt ? `<div class="receipt"><div class="eyebrow">CUSTODY CONFIRMED</div><h3>Initial receiving receipt</h3><div class="line"><span>Receipt</span><strong>${escapeHtml(S.receipt.receiptNo)}</strong></div><div class="line"><span>Package / account</span><strong>${escapeHtml(S.receipt.label)} · ${escapeHtml(S.receipt.accountCode)}</strong></div><div class="line"><span>Received / shelf</span><strong>${stamp(S.receipt.receivedAt)} · ${escapeHtml(S.receipt.shelf)}</strong></div><div class="line"><span>Weight / condition</span><strong>${(S.receipt.weightGrams / 1000).toFixed(2)} kg · ${escapeHtml(S.receipt.condition)}</strong></div><div class="form-actions"><button class="btn btn-secondary btn-small" data-action="print-receipt">Print receipt</button><button class="btn btn-primary btn-small" data-action="create-quote">Create draft quote</button></div>${S.quote ? `<div class="notice"><strong>${escapeHtml(S.quote.id)} · ${money(S.quote.amountUsdCents)}</strong><br>${escapeHtml(S.quote.mode)} · ${S.quote.basis} ${S.quote.mode === 'air' ? 'kg' : 'm³'} × $${S.quote.rate}<br>${escapeHtml(S.quote.note)}</div>` : ''}</div>` : ''}
+  ${S.receipt ? `<div class="receipt"><h3>Initial receiving receipt</h3><div class="line"><span>Receipt</span><strong>${escapeHtml(S.receipt.receiptNo)}</strong></div><div class="line"><span>Package / account</span><strong>${escapeHtml(S.receipt.label)} · ${escapeHtml(S.receipt.accountCode)}</strong></div><div class="line"><span>Delivery address at intake</span><strong class="address-lines">${escapeHtml(S.receipt.deliveryAddress || 'Not recorded')}</strong></div><div class="line"><span>Received / shelf</span><strong>${stamp(S.receipt.receivedAt)} · ${escapeHtml(S.receipt.shelf)}</strong></div><div class="line"><span>Weight / condition</span><strong>${(S.receipt.weightGrams / 1000).toFixed(2)} kg · ${escapeHtml(S.receipt.condition)}</strong></div><div class="form-actions"><button class="btn btn-secondary btn-small" data-action="print-receipt">Print receipt</button><button class="btn btn-primary btn-small" data-action="create-quote">Create draft quote</button></div>${S.quote ? `<div class="notice"><strong>${escapeHtml(S.quote.id)} · ${money(S.quote.amountUsdCents)}</strong><br>${escapeHtml(S.quote.mode)} · ${S.quote.basis} ${S.quote.mode === 'air' ? 'kg' : 'm³'} × $${S.quote.rate}<br>${escapeHtml(S.quote.note)}</div>` : ''}</div>` : ''}
   </div><div class="grid" style="align-content:start"><div class="card card-pad"><div class="card-head"><div><h2>Scan lookup</h2><p>Find a received box by label or carrier tracking.</p></div></div><form id="lookup-form" class="search-row"><input class="search-input" name="label" required placeholder="PKG-1048 or tracking number"><button class="btn btn-secondary">Find</button></form>${S.searchResult ? `<div class="notice"><strong>${escapeHtml(S.searchResult.label)}</strong> · ${escapeHtml(S.searchResult.contents)}<br>Shelf: ${escapeHtml(S.searchResult.shelf || 'In transit')} · ${title(S.searchResult.state)}</div>` : ''}</div><div class="card card-pad"><div class="card-head"><div><h2>Collections to receive</h2><p>Confirm pickup before warehouse intake.</p></div></div>${queue.pickups.length ? queue.pickups.map(item => `<div class="mini-item"><span><strong>${escapeHtml(item.address)}</strong><small>${escapeHtml(item.id)} · ${item.packageCount} box(es) · ${date(item.requestedDate)}</small></span>${item.status === 'requested' ? `<button class="btn btn-light btn-small" data-collect="${escapeHtml(item.id)}">Mark collected</button>` : badge(item.status)}</div>`).join('') : '<div class="empty">No collection requests yet.</div>'}</div><div class="card card-pad"><div class="card-head"><div><h2>Recently received</h2><p>Current boxes on Miami shelves.</p></div>${badge('received')}</div>${queue.packages.slice(0, 5).map(item => `<div class="mini-item"><span><strong>${escapeHtml(item.label)}</strong><small>${escapeHtml(item.contents)} · shelf ${escapeHtml(item.shelf)}</small></span><small>${date(item.receivedAt)}</small></div>`).join('') || '<div class="empty">No boxes received.</div>'}</div></div></div>`
 }
 function setupView() {
   const c = S.bootstrap.config
-  return `${sectionHead('Demo configuration', 'Receiving setup', 'Edit the sample address, hours, contact details, and quote rates used throughout this mockup.')}
+  return `${sectionHead('Receiving setup')}
   <div class="grid grid-wide"><div class="card card-pad"><div class="card-head"><div><h2>Company and warehouse</h2><p>These settings appear in the customer and receiving pages.</p></div></div><form id="setup-form" class="form-grid">${field('cfg-name', 'Company display name', 'text', c.companyName, 'required')}${field('cfg-phone', 'Support phone', 'text', c.supportPhone, 'required')}${field('cfg-email', 'Support email', 'email', c.supportEmail, 'required')} ${field('cfg-branch', 'Honduras branch label', 'text', c.hondurasBranch, 'required')}<div class="field full"><label for="cfg-address">Miami receiving address</label><input id="cfg-address" name="miamiAddress" value="${escapeHtml(c.miamiAddress)}" required></div><div class="field full"><label for="cfg-hours">Receiving hours</label><input id="cfg-hours" name="receivingHours" value="${escapeHtml(c.receivingHours)}" required></div>${field('cfg-prefix', 'New label prefix', 'text', c.labelPrefix, 'required')}<div class="field full"><label for="cfg-note">Receiving instructions</label><textarea id="cfg-note" name="receivingNote">${escapeHtml(c.receivingNote)}</textarea></div>${field('cfg-air', 'Air rate · USD per kg', 'number', c.airRateUsdPerKg, 'required min="0.01" step="0.01"')}${field('cfg-ocean', 'Ocean rate · USD per m³', 'number', c.oceanRateUsdPerCbm, 'required min="0.01" step="0.01"')}${field('cfg-minimum', 'Minimum draft quote · USD', 'number', c.minimumQuoteUsd, 'required min="0.01" step="0.01"')}<div class="field full"><div class="form-actions"><button class="btn btn-primary">Save demo settings</button></div></div></form></div>
-  <div class="grid" style="align-content:start"><div class="card card-pad"><div class="card-head"><div><h2>Demo data</h2><p>Stored in this project folder, shared across browser reloads.</p></div></div><div class="mini-item"><span>Customers</span><strong>${S.bootstrap.customers.length}</strong></div><div class="mini-item"><span>Packages</span><strong>${S.dashboard.packages.length} for selected customer</strong></div><div class="mini-item"><span>Sample personas</span><strong>Ana + Miguel</strong></div><div class="notice warn">This mockup uses local JSON data and has no real sign-in, carrier connection, billing, or live scheduling.</div><div class="form-actions"><button class="btn btn-secondary" data-action="reset">Restore sample data</button></div></div><div class="card card-pad"><div class="eyebrow">NEXT USER TEST</div><h2 style="margin:9px 0">Try the full first-mile path</h2><p class="small-note">Request a collection as Ana → mark it collected at the receiving desk → generate a QR sticker → photograph, measure and shelf the box → print its receipt → refresh Ana’s tracking page.</p></div></div></div>`
+  <div class="grid" style="align-content:start"><div class="card card-pad"><div class="card-head"><div><h2>Demo data</h2><p>Stored in this project folder, shared across browser reloads.</p></div></div><div class="mini-item"><span>Customers</span><strong>${S.bootstrap.customers.length}</strong></div><div class="mini-item"><span>Packages</span><strong>${S.dashboard.packages.length} for selected customer</strong></div><div class="mini-item"><span>Sample personas</span><strong>Ana + Miguel</strong></div><div class="notice warn">This mockup uses local JSON data and has no real sign-in, carrier connection, billing, or live scheduling.</div><div class="form-actions"><button class="btn btn-secondary" data-action="reset">Restore sample data</button></div></div></div></div>`
 }
 
 function enhanceReceivingView() {
@@ -115,16 +115,10 @@ function enhanceReceivingView() {
   queueLink.textContent = 'View collections'
   $('.head-actions').prepend(queueLink)
   $('#lookup-form input').placeholder = 'Label or tracking number'
-  $('.scan-glyph').outerHTML = '<svg class="scan-glyph" viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="M2 2h10v10H2zM20 2h10v10H20zM2 20h10v10H2z" stroke="currentColor" stroke-width="3"/><path d="M5 5h4v4H5zM23 5h4v4h-4zM5 23h4v4H5zM18 18h4v4h-4zM26 18h4v4h-4zM18 26h4v4h-4zM26 26h4v4h-4z" fill="currentColor"/></svg>'
-  const sections = [
-    ['rc-account', '01 / CUSTOMER', 'Who brought the box?', 'Choose the account and how the box reached Miami.'],
-    ['rc-label', '02 / IDENTIFY', 'Label and contents', 'Use the printed QR or create one before the box leaves the counter.'],
-    ['rc-shelf', '03 / BOX CHECK', 'Measure and shelve', 'Record the box condition, dimensions, shelf and receiving photos.']
-  ]
-  for (const [id, number, heading, help] of sections) {
-    const section = document.createElement('div')
+  for (const [id, heading] of [['rc-label', 'Package identification'], ['rc-shelf', 'Measurements and storage']]) {
+    const section = document.createElement('h3')
     section.className = 'intake-section'
-    section.innerHTML = `<span>${number}</span><div><strong>${heading}</strong><small>${help}</small></div>`
+    section.textContent = heading
     $(`#${id}`).closest('.field').before(section)
   }
   const tracking = $('#rc-tracking')
@@ -142,8 +136,8 @@ function enhanceReceivingView() {
   form.querySelector('#rc-label').closest('.field').append(hint)
   const scanner = document.createElement('div')
   scanner.className = 'qr-scanner'
-  scanner.innerHTML = '<div class="scan-actions"><button type="button" class="btn btn-light btn-small" data-action="start-camera">Scan with camera</button><button type="button" class="btn btn-secondary btn-small" data-action="scan-image">Scan image file</button><button type="button" class="btn btn-secondary btn-small" data-action="stop-camera" hidden>Stop camera</button><input type="file" id="qr-file" accept="image/*" hidden></div><video id="qr-video" autoplay playsinline muted hidden></video><span class="hint">A USB scanner can type directly into the label field below.</span>'
-  form.previousElementSibling.after(scanner)
+  scanner.innerHTML = '<div class="scan-actions"><button type="button" class="btn btn-light btn-small" data-action="start-camera">Scan with camera</button><button type="button" class="btn btn-secondary btn-small" data-action="scan-image">Scan image file</button><button type="button" class="btn btn-secondary btn-small" data-action="stop-camera" hidden>Stop camera</button><input type="file" id="qr-file" accept="image/*" hidden></div><video id="qr-video" autoplay playsinline muted hidden></video>'
+  form.querySelector('#rc-label').closest('.field').append(scanner)
   updatePickupOptions()
   if (S.receipt) $('#rc-label').value = ''
 
@@ -168,7 +162,6 @@ function enhanceReceivingView() {
     form.hidden = true
     $('.customer-create').hidden = true
     if ($('.new-customer-notice')) $('.new-customer-notice').hidden = true
-    form.closest('.card').querySelector('.scan-box').hidden = true
     scanner.hidden = true
     form.closest('.card').querySelector('.card-head h2').textContent = 'Saved receiving record'
     const details = document.createElement('div')
@@ -202,6 +195,7 @@ function updatePickupOptions() {
   const select = $('#rc-pickup')
   if (!source || !select) return
   const customer = S.bootstrap.customers.find(item => item.accountCode === $('#rc-account').value)
+  if (customer) $('.desk-address').innerHTML = addressSummary(customer)
   const previous = select.value
   const available = S.queue.pickups.filter(item => item.status === 'collected' && item.customerId === customer?.id)
   select.innerHTML = `<option value="">Select collected request</option>${available.map(item => `<option value="${escapeHtml(item.id)}">${escapeHtml(item.id)} · ${escapeHtml(item.address)}</option>`).join('')}`
@@ -319,6 +313,20 @@ async function startCamera() {
 }
 
 document.addEventListener('click', async event => {
+  const opener = event.target.closest('[data-open-dialog]')
+  if (opener) { document.getElementById(opener.dataset.openDialog).showModal(); return }
+  const edit = event.target.closest('[data-edit-address]')
+  if (edit) {
+    const customer = S.bootstrap.customers.find(item => item.id === edit.dataset.editAddress)
+    const form = $('#delivery-form')
+    form.dataset.customerId = customer.id
+    form.querySelector('.form-error').textContent = ''
+    $('#delivery-account').textContent = customer.name + ' · ' + customer.accountCode
+    $('#delivery-address').value = customer.deliveryAddress || ''
+    $('#delivery-editor').showModal()
+    $('#delivery-address').focus()
+    return
+  }
   const nav = event.target.closest('[data-view]')
   if (nav) { S.view = nav.dataset.view; render(); return }
   const tab = event.target.closest('[data-tab]')
@@ -343,6 +351,8 @@ document.addEventListener('click', async event => {
   const action = event.target.closest('[data-action]')?.dataset.action
   if (!action) return
   try {
+    if (action === 'close-dialog') event.target.closest('dialog').close()
+    if (action === 'open-portal') { S.view = 'customer'; render() }
     if (action === 'retry') await refresh()
     if (action === 'copy-address') {
       await navigator.clipboard.writeText(`${S.bootstrap.config.miamiAddress}\nAccount: ${S.dashboard.customer.accountCode}`)
@@ -382,7 +392,7 @@ document.addEventListener('click', async event => {
       }
     }
     if (action === 'print-label') printContent(`<div style="font:16px Arial;width:340px;text-align:center;border:2px solid currentColor;padding:15px"><strong style="font-size:24px">${escapeHtml(S.label.label)}</strong><br><img src="${S.label.qr}" width="220" height="220"><br>${escapeHtml(S.label.customerName)}<br><strong>${escapeHtml(S.label.accountCode)}</strong><br>Miami receiving</div>`)
-    if (action === 'print-receipt') { const p = S.receipt; printContent(`<div style="font:14px Arial;width:430px"><h2>Initial receiving receipt</h2><p>${escapeHtml(S.bootstrap.config.companyName)}</p><hr><p>Receipt: <strong>${escapeHtml(p.receiptNo)}</strong></p><p>Package: ${escapeHtml(p.label)}<br>Account: ${escapeHtml(p.accountCode)}<br>Received: ${stamp(p.receivedAt)}<br>Shelf: ${escapeHtml(p.shelf)}<br>Contents: ${escapeHtml(p.contents)}<br>Weight: ${(p.weightGrams / 1000).toFixed(2)} kg<br>Condition: ${escapeHtml(p.condition)}</p><hr><small>Demo receipt · not proof of freight payment</small></div>`) }
+    if (action === 'print-receipt') { const p = S.receipt; printContent(`<div style="font:14px Arial;width:430px"><h2>Initial receiving receipt</h2><p>${escapeHtml(S.bootstrap.config.companyName)}</p><hr><p>Receipt: <strong>${escapeHtml(p.receiptNo)}</strong></p><p>Package: ${escapeHtml(p.label)}<br>Account: ${escapeHtml(p.accountCode)}<br>Delivery address at intake: <span style="white-space:pre-line">${escapeHtml(p.deliveryAddress || 'Not recorded')}</span><br>Received: ${stamp(p.receivedAt)}<br>Shelf: ${escapeHtml(p.shelf)}<br>Contents: ${escapeHtml(p.contents)}<br>Weight: ${(p.weightGrams / 1000).toFixed(2)} kg<br>Condition: ${escapeHtml(p.condition)}</p><hr><small>Demo receipt · not proof of freight payment</small></div>`) }
     if (action === 'print-quote') { const q = S.quote; const p = S.receipt; printContent(`<div style="font:14px Arial;width:480px"><h2>Draft freight quotation</h2><p>${escapeHtml(S.bootstrap.config.companyName)} · ${escapeHtml(q.id)}</p><hr><p>Customer account: ${escapeHtml(p.accountCode)}<br>Package: ${escapeHtml(p.label)}<br>Contents: ${escapeHtml(p.contents)}<br>Service: ${title(q.mode)}<br>Measured basis: ${q.basis} ${q.mode === 'air' ? 'kg' : 'm³'}<br>Rate: $${q.rate} per ${q.mode === 'air' ? 'kg' : 'm³'}</p><h2>Total estimate: ${money(q.amountUsdCents)}</h2><hr><small>${escapeHtml(q.note)}</small></div>`) }
     if (action === 'create-quote') {
       if (S.quote) { document.querySelector('.receipt .notice')?.scrollIntoView({ block: 'center', behavior: 'smooth' }); toast('Draft quote is shown below') }
@@ -397,7 +407,13 @@ document.addEventListener('change', async event => {
     const workspace = $('#app')
     workspace.inert = true
     workspace.setAttribute('aria-busy', 'true')
-    try { S.customerId = event.target.value; S.selectedPackageId = null; S.tab = 'packages'; await refresh() }
+    try {
+      S.customerId = event.target.value
+      S.selectedPackageId = S.receipt = S.quote = S.label = S.searchResult = S.newCustomer = null
+      S.photos = []
+      S.tab = 'packages'
+      await refresh()
+    }
     catch (switchError) { error(switchError) }
     finally { workspace.inert = false; workspace.removeAttribute('aria-busy') }
   }
@@ -439,13 +455,34 @@ document.addEventListener('submit', async event => {
   const form = event.target
   const values = Object.fromEntries(new FormData(form))
   try {
+    if (form.id === 'delivery-form') {
+      const button = form.querySelector('[type="submit"]')
+      if (button.disabled) return
+      button.disabled = true
+      try {
+        const customer = await api(`/customers/${encodeURIComponent(form.dataset.customerId)}/delivery-address`, { method: 'PUT', body: JSON.stringify({ deliveryAddress: values.deliveryAddress }) })
+        S.bootstrap.customers = S.bootstrap.customers.map(item => item.id === customer.id ? customer : item)
+        if (S.dashboard.customer.id === customer.id) S.dashboard.customer = customer
+        const summary = S.view === 'receiving' ? $('.desk-address') : $('.delivery-summary')
+        if (summary?.querySelector('[data-edit-address]')?.dataset.editAddress === customer.id) {
+          summary.innerHTML = addressSummary(customer)
+        }
+        if (form.dataset.customerId === customer.id && $('#delivery-editor').open) {
+          $('#delivery-editor').close()
+          summary?.querySelector('button')?.focus()
+        }
+        toast('Delivery address saved')
+      } catch (saveError) { form.querySelector('.form-error').textContent = saveError.message }
+      finally { button.disabled = false }
+      return
+    }
     if (form.id === 'customer-create-form') {
       const button = form.querySelector('[type="submit"]')
       if (button.disabled) return
       button.disabled = true
       button.textContent = 'Creating account…'
       try {
-        const customer = await api('/customers', { method: 'POST', body: JSON.stringify({ kind: values.kind, name: values['new-name'], phone: values['new-phone'], email: values['new-email'] }) })
+        const customer = await api('/customers', { method: 'POST', body: JSON.stringify({ kind: values.kind, name: values['new-name'], phone: values['new-phone'], email: values['new-email'], deliveryAddress: values.deliveryAddress }) })
         S.customerId = customer.id
         S.tab = 'packages'
         S.newCustomer = customer
@@ -482,7 +519,18 @@ document.addEventListener('submit', async event => {
       const payload = { companyName: values['cfg-name'], supportPhone: values['cfg-phone'], supportEmail: values['cfg-email'], hondurasBranch: values['cfg-branch'], miamiAddress: values.miamiAddress, receivingHours: values.receivingHours, labelPrefix: values['cfg-prefix'], receivingNote: values.receivingNote, airRateUsdPerKg: Number(values['cfg-air']), oceanRateUsdPerCbm: Number(values['cfg-ocean']), minimumQuoteUsd: Number(values['cfg-minimum']) }
       await api('/config', { method: 'PUT', body: JSON.stringify(payload) }); await refresh(); toast('Demo configuration saved')
     }
-  } catch (e) { error(e) }
+  } catch (e) {
+    if (form.closest('dialog')) {
+      let message = form.querySelector('.form-error')
+      if (!message) {
+        message = document.createElement('p')
+        message.className = 'form-error field full'
+        message.setAttribute('role', 'alert')
+        form.append(message)
+      }
+      message.textContent = e.message
+    } else { error(e) }
+  }
 })
 async function resizePhoto(file) {
   if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) throw new Error('Use a JPEG, PNG, or WebP photo')

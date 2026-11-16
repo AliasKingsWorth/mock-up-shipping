@@ -14,7 +14,7 @@ export function createFixture() {
       minimumQuoteUsd: 18,
     },
     customers: [
-      { id: 'cus_ana', name: 'Ana Martínez', accountCode: 'MIA-ANA01', email: 'ana@example.test', phone: '+504 9999-1001' },
+      { id: 'cus_ana', name: 'Ana Martínez', accountCode: 'MIA-ANA01', email: 'ana@example.test', phone: '+504 9999-1001', deliveryAddress: 'Casa 4, Colonia Ejemplo\nSan Pedro Sula, Cortés' },
       { id: 'cus_miguel', name: 'Miguel Reyes', accountCode: 'MIA-MIG02', email: 'miguel@example.test', phone: '+504 9999-1002' },
     ],
     prealerts: [

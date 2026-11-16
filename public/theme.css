@@ -1,44 +1,12 @@
-@font-face{font-family:'DM Sans Variable';src:url('/fonts/dm-sans.woff2') format('woff2');font-style:normal;font-weight:100 1000;font-display:swap}
-@font-face{font-family:'Fraunces Variable';src:url('/fonts/fraunces.woff2') format('woff2');font-style:normal;font-weight:100 900;font-display:swap}
-:root{
-  --paper:#f4f0e8;
-  --surface:#fffdf8;
-  --sunken:#ebe6db;
-  --line:#ded6c9;
-  --line-strong:#c7baaa;
-  --ink:#24332e;
-  --ink-soft:#58635b;
-  --ink-faint:#687168;
-  --primary:#12675c;
-  --primary-hover:#0c514a;
-  --primary-soft:#e5efe9;
-  --primary-soft-hover:#d6e5da;
-  --primary-line:#bed7c9;
-  --scan-line:#a8c9b9;
-  --address-accent:#f8dbc8;
-  --address-text:#e1f0e8;
-  --brand-arrow:#efc5a9;
-  --address-watermark:rgba(255,252,247,.11);
-  --clay:#9b4d29;
-  --clay-soft:#f8e9df;
-  --sage:#547d60;
-  --sage-soft:#e9f2e9;
-  --sage-ink:#426a4d;
-  --dusk:#4b6d84;
-  --dusk-soft:#e8f0f4;
-  --plum:#755d77;
-  --plum-soft:#f1eaf1;
-  --warning:#95631a;
-  --warning-soft:#fbf0d8;
-  --receipt-line:#bfd4c2;
-  --receipt-surface:#f6faf4;
-  --font-body:'DM Sans Variable','Segoe UI',sans-serif;
-  --font-display:'Fraunces Variable',Georgia,serif;
-  --radius-sm:8px;
-  --radius-md:12px;
-  --radius-lg:18px;
-  --radius-xl:24px;
-  --shadow-card:0 2px 9px -6px rgba(36,51,46,.15);
-  --shadow-lift:0 8px 22px -14px rgba(36,51,46,.22);
-  --ease-out:cubic-bezier(.22,1,.36,1);
+@font-face { font-family: 'DM Sans'; src: url('/fonts/dm-sans.woff2') format('woff2'); font-weight: 100 1000; font-display: swap }
+:root {
+  --font-body: 'DM Sans', 'Segoe UI', sans-serif;
+  --paper: #f5f7f6;
+  --ink: #192e29;
+  --muted: #53655e;
+  --line: #d9e2dc;
+  --line-strong: #b7c6be;
+  --primary: #16644f;
+  --primary-dark: #0b493a;
+  --soft: #edf5f0;
 }

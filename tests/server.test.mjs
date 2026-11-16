@@ -27,8 +27,14 @@ test('customer collection, receipt, tracking, quote, and persistence', async () 
     assert.equal((await request('/customers', 'POST', { name: 'Duplicate', phone: '3055550122', email: 'LUCIA@example.test' })).status, 409)
     assert.equal((await request('/customers', 'POST', { name: 'Lucía Rivera', phone: '3055550111' })).status, 409)
     const createdLabel = await request('/labels', 'POST', { customerId: created.data.id })
+    const addressRoute = `/customers/${created.data.id}/delivery-address`
+    const destination = 'Casa 7, Colonia Ejemplo\nLa Ceiba, Atlántida'
+    assert.equal((await request(addressRoute, 'PUT', { deliveryAddress: ' ' })).status, 400)
+    assert.equal((await request(addressRoute, 'PUT', { deliveryAddress: destination })).data.deliveryAddress, destination)
     const createdReceipt = await request('/receipts', 'POST', { label: createdLabel.data.label, accountCode: created.data.accountCode, source: 'dropoff', carrier: 'Walk-in customer', tracking: '', contents: 'Family gifts', mode: 'air', weightGrams: 1000, dimensionsCm: [20, 20, 20], condition: 'Intact', shelf: 'A-03', photos: [] })
     assert.equal(createdReceipt.status, 201)
+    assert.equal(createdReceipt.data.package.deliveryAddress, destination)
+    await request(addressRoute, 'PUT', { deliveryAddress: 'Nueva dirección, La Ceiba' })
     assert.equal((await request(`/customers/${created.data.id}/dashboard`)).data.packages[0].label, createdLabel.data.label)
     assert.equal((await request('/customers/cus_ana/dashboard')).data.packages.some(item => item.id === createdReceipt.data.package.id), false)
     const alert = await request('/prealerts', 'POST', { customerId: 'cus_ana', carrier: 'UPS', tracking: 'TEST-123', contents: 'Camera', mode: 'air', expectedDate: futureDate })
@@ -94,6 +100,8 @@ test('customer collection, receipt, tracking, quote, and persistence', async () 
       assert.ok(persisted.packages.some(item => item.id === pkg.id))
       const createdAfterRestart = await fetch(`http://127.0.0.1:${reopened.address().port}/api/mock/customers/${created.data.id}/dashboard`).then(response => response.json())
       assert.equal(createdAfterRestart.customer.accountCode, created.data.accountCode)
+      assert.equal(createdAfterRestart.customer.deliveryAddress, 'Nueva dirección, La Ceiba')
+      assert.equal(createdAfterRestart.packages[0].deliveryAddress, destination)
       assert.equal(createdAfterRestart.packages[0].label, createdLabel.data.label)
     } finally { await new Promise(resolve => reopened.close(resolve)) }
   } finally {
