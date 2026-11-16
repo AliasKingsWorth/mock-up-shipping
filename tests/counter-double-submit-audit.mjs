@@ -1,4 +1,4 @@
-import { signIn } from './sign-in.mjs'
+import { signIn, openIntake } from './sign-in.mjs'
 import { chromium } from 'playwright'
 import { mkdtemp, rm } from 'node:fs/promises'
 import os from 'node:os'
@@ -13,7 +13,7 @@ const browser = await chromium.launch({ channel: 'chrome', headless: true })
 try {
   const page = await browser.newPage()
   await signIn(page, base)
-  await signIn(page, base, 'desk@example.test')
+  await openIntake(page, base)
   await page.locator('.customer-create summary').click()
   await page.locator('#new-name').fill('Duplicate Walk-In')
   await page.locator('#new-phone').fill('+1 305 555 0100')

@@ -138,3 +138,97 @@ dialog::backdrop { background: rgba(21, 36, 32, .38) }
 .register-panel small.full { grid-column: 1 / -1 }
 #logout { margin-left: auto }
 @media (max-width: 700px) { .auth-panel { margin: 20px 14px; padding: 20px } }
+
+/* Staff workspace */
+.staff-workspace {
+  --rail-width: 232px;
+  --staff-edge: clamp(20px, 3.5vw, 56px);
+  background: #f5f5f7;
+  color: #222b2a;
+}
+.staff-workspace .topbar {
+  position: fixed; inset: 0 auto 0 0; z-index: 2; width: var(--rail-width);
+  display: flex; flex-flow: column nowrap; align-items: stretch; gap: 0;
+  min-height: 0; padding: 26px 12px 16px; overflow-y: auto;
+  background: #eaecee; border: 0; border-right: 1px solid #dfe2e3;
+}
+.staff-workspace .brand { padding: 0 7px; max-width: none; gap: 10px; font-size: 14px }
+.staff-workspace .brand strong { max-width: 132px; line-height: 1.4 }
+.staff-location { margin: 24px 4px 18px; border-block: 1px solid #d6dada; padding: 13px 4px; font-size: 13px; color: #50615b }
+.staff-workspace .topbar nav { display: grid; width: 100%; order: 0; padding: 0; gap: 3px; align-self: stretch }
+.staff-workspace .nav-link {
+  display: flex; align-items: center; gap: 12px; min-height: 42px; border: 0;
+  padding: 9px 12px; border-radius: 8px; color: #3d4744; font-size: 14px; text-align: left; font-weight: 540;
+}
+.staff-workspace .nav-link.active { background: white; color: #163e33; font-weight: 670 }
+.staff-workspace .nav-link:hover { background: #f7f8f8 }
+.rail-icon { display: inline-flex; width: 18px; height: 18px; align-items: center; justify-content: center }
+.rail-icon svg, .warehouse-symbol svg { width: 100%; height: 100%; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linejoin: round; stroke-linecap: round }
+.staff-workspace #logout { margin: auto 4px 0; background: transparent; border-color: #c8cecb }
+.staff-workspace .main { width: min(calc(100% - var(--rail-width) - 2 * var(--staff-edge)), 1100px); margin: 0 auto; position: relative; left: calc(var(--rail-width) / 2); padding: 36px 0 72px }
+.staff-workspace .page-head { margin-bottom: 18px }
+.staff-workspace h1 { font-size: clamp(24px, 2.1vw, 31px); font-weight: 570; letter-spacing: -.035em }
+.staff-workspace .btn { border-radius: 8px }
+.staff-workspace .card, .desk-banner, .record-card { background: #fff; border: 1px solid #dce0df; border-radius: 12px; box-shadow: none }
+.desk-banner { display: flex; align-items: center; gap: 16px; padding: 22px 24px; margin-bottom: 22px }
+.warehouse-symbol { flex: none; display: grid; place-items: center; padding: 12px; width: 46px; height: 46px; background: #edf2ef; color: #225b48; border-radius: 11px }
+.desk-banner h2 { font-size: 16px }
+.desk-banner p { margin-top: 2px; color: var(--muted); font-size: 13px }
+.desk-banner .btn { margin-left: auto; gap: 6px }
+.record-card { overflow: hidden }
+.record-card header, .record-tools, .record-footer { display: flex; align-items: center; gap: 12px; padding: 16px 20px }
+.record-card header { justify-content: space-between; padding-bottom: 0 }
+.record-card header h2 { font-size: 17px }
+.record-tools { padding-block: 13px 18px }
+.record-tools select, .record-footer select, .record-search { border: 1px solid #d6dbd9; border-radius: 8px; background: white; font-size: 13px }
+.record-tools select { padding: 9px; min-height: 40px; max-width: 100% }
+.record-search { display: flex; align-items: center; flex: 1; min-width: 0; gap: 12px; padding-left: 14px }
+.search-icon { width: 13px; height: 13px; border-radius: 50%; border: 1.7px solid #626c66; position: relative; flex: none }
+.search-icon:after { content: ''; position: absolute; width: 6px; height: 1.7px; background: #626c66; bottom: -2px; right: -4px; transform: rotate(45deg) }
+.record-search input { flex: 1; min-width: 0; border: 0; background: transparent; border-radius: 6px; font-size: 13px; min-height: 40px; padding: 8px }
+.record-scroll { position: relative; overflow-x: auto }
+.record-table { width: 100%; border-collapse: collapse; text-align: left; font-size: 13px }
+.record-table th, .record-table td { padding: 15px 20px; border-bottom: 1px solid #e4e7e5 }
+.record-table th { font-size: 12px; font-weight: 620; color: #55615c; background: #fafbfa }
+.record-table td { height: 67px }
+.record-table td:last-child { text-align: right; padding-left: 0 }
+.record-table small { display: block; margin-top: 2px; font-size: 12px; color: #68756f }
+.record-table tr:hover td { background: #fafcfb }
+.record-link, .row-open, .pager button { background: transparent; border: 0; cursor: pointer; color: var(--primary) }
+.record-link { font-size: 13px; font-weight: 680; padding: 4px 0; text-align: left; overflow-wrap: anywhere }
+.record-link:hover { text-decoration: underline }
+.row-open, .pager button { padding: 0 8px; min-width: 32px; min-height: 36px; border-radius: 6px; font-size: 21px }
+.row-open:hover, .pager button:not(:disabled):hover { background: var(--soft) }
+.record-footer { flex-wrap: wrap; color: #52605a; font-size: 12px }
+.record-footer select { padding: 6px; margin-left: 4px }
+.pager { margin-left: auto; display: flex; align-items: center; gap: 8px }
+.pager button:disabled { opacity: .3; cursor: default }
+.visually-hidden { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap }
+.staff-workspace #staff-record .dialog-head { padding-bottom: 10px; border-bottom: 1px solid var(--line) }
+@media (max-width: 1050px) and (min-width: 701px) {
+  .staff-workspace { --rail-width: 190px; --staff-edge: 20px }
+  .staff-workspace .grid-wide { grid-template-columns: 1fr }
+  .record-table th, .record-table td { padding-inline: 12px }
+}
+@media (max-width: 700px) {
+  .staff-workspace .topbar { position: static; width: auto; display: grid; grid-template-columns: minmax(0,1fr) auto; gap: 12px; padding: 12px; border: 0; border-bottom: 1px solid #dce0df }
+  .staff-workspace .brand { padding: 0; font-size: 13px }
+  .staff-workspace .brand strong { max-width: none }
+  .staff-location { display: none }
+  .staff-workspace #logout { grid-column: 2; grid-row: 1; margin: 0; padding-inline: 10px }
+  .staff-workspace .topbar nav { grid-column: 1 / -1; grid-template-columns: repeat(2,minmax(0,1fr)) }
+  .staff-workspace .nav-link { font-size: 13px; min-height: 40px }
+  .staff-workspace .main { left: auto; width: calc(100% - 24px); padding: 20px 0 50px }
+  .desk-banner { flex-wrap: wrap; padding: 15px; gap: 10px }
+  .desk-banner .btn { width: 100%; margin-top: 3px }
+  .record-tools { align-items: stretch; flex-direction: column }
+  .record-tools, .record-footer, .record-card header { padding-inline: 14px }
+  .record-table { table-layout: fixed }
+  .record-table td { overflow-wrap: anywhere }
+  .record-table :is(th,td):nth-child(3), .record-table :is(th,td):nth-child(5) { display: none }
+  .record-table :is(th,td):nth-child(4) { width: 30% }
+  .record-table .badge { white-space: normal }
+  .record-table td, .record-table th { padding-inline: 14px }
+  .record-footer { gap: 8px }
+  .pager { gap: 2px }
+}

@@ -146,6 +146,9 @@ export function createMockServer({ dataFile = process.env.MOCK_DATA_FILE || defa
       }
       if (req.method === 'GET' && url.pathname === '/api/mock/receiving/queue') {
         return send(200, {
+          records: db.packages.map(({ id, label, customerId, contents, receivedAt, state, tracking, shelf }) => (
+            { id, label, customerId, contents, receivedAt, state, tracking, shelf }
+          )).sort((a, b) => (b.receivedAt || '').localeCompare(a.receivedAt || '')),
           packages: db.packages.filter(item => item.state === 'received').slice().reverse(),
           pickups: db.pickups.slice().reverse(),
         })

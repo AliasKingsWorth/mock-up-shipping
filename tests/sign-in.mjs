@@ -11,3 +11,8 @@ export async function signIn(page, base, email = 'ana@example.test', password = 
   await page.getByRole('button', { name: 'Sign in', exact: true }).click()
   await page.waitForURL(base + (staff ? '/receiving' : '/portal'))
 }
+
+export async function openIntake(page, base) {
+  await signIn(page, base, 'desk@example.test')
+  await page.getByRole('button', { name: 'Receive a package' }).click()
+}

@@ -1,4 +1,4 @@
-import { signIn } from './sign-in.mjs'
+import { signIn, openIntake } from './sign-in.mjs'
 import { chromium } from 'playwright'
 import { mkdtemp, rm } from 'node:fs/promises'
 import os from 'node:os'
@@ -57,7 +57,7 @@ try {
   await signIn(page, base, 'ana@example.test')
   await page.getByRole('heading', { name: /^Ana\b/ }).waitFor()
 
-  await signIn(page, base, 'desk@example.test')
+  await openIntake(page, base)
   await page.getByRole('button', { name: 'Mark collected' }).click()
   await page.locator('#rc-source').selectOption('pickup')
   await page.getByText('Collected', { exact: true }).waitFor()
@@ -92,7 +92,7 @@ try {
   const denied = await page.request.get(`${base}/api/mock/packages/${label}?customerId=cus_miguel`)
   assert(denied.status() === 404, 'Another customer could read the new box detail')
 
-  await signIn(page, base, 'desk@example.test')
+  await openIntake(page, base)
   await page.locator('.customer-create summary').click()
   await page.locator('#new-kind').selectOption('business')
   await page.locator('#new-name').fill('Rivera Hardware LLC')
@@ -108,7 +108,7 @@ try {
   await page.getByRole('heading', { name: /^Rivera\b/ }).waitFor()
   assert((await page.locator('.address-card').innerText()).includes(newCode), 'New account does not show its Miami code before first box')
   assert((await page.locator('.activity-grid').innerText()).includes('Your first box'), 'New account lacks a useful empty tracking state')
-  await signIn(page, base, 'desk@example.test')
+  await openIntake(page, base)
   await page.locator('#rc-account').selectOption(newCode)
   await page.getByRole('button', { name: 'Generate QR' }).click()
   await page.waitForFunction(() => document.querySelector('#rc-label')?.value.startsWith('MIA-'))
@@ -137,7 +137,7 @@ try {
   assert(deniedNew.status() === 404, 'Ana could read the new customer package')
   const mobile = await browser.newPage({ viewport: { width: 390, height: 844 } })
   await signIn(mobile, base)
-  await signIn(mobile, base, 'desk@example.test')
+  await openIntake(mobile, base)
   await mobile.locator('.customer-create summary').click()
   const mobileSize = await mobile.evaluate(() => ({ viewport: innerWidth, content: document.documentElement.scrollWidth }))
   assert(mobileSize.content <= mobileSize.viewport + 1, `New customer form overflows mobile: ${JSON.stringify(mobileSize)}`)

@@ -17,7 +17,7 @@ Open <http://127.0.0.1:4175> for the demo or <http://127.0.0.1:4175/HOW_IT_WORKS
 | Customer (Miguel) | `/login` | `miguel@example.test` | `CustomerDemo24!` |
 | Receiving staff | `/staff/login` | `desk@example.test` | `StaffDemo24!` |
 
-Use `/register` to create a customer account with a Honduras destination. Sign-up opens the new customer's portal immediately. Staff sign-in opens the receiving desk with access to demo settings. When creating a walk-in account, staff can set an email and portal password.
+Use `/register` to create a customer account with a Honduras destination. Sign-up opens the new customer's portal immediately. Staff sign-in opens searchable package records. Select a package to view its history, or use the sidebar to open intake, collections or demo setup. When creating a walk-in account, staff can set an email and portal password.
 
 For a hosted demo, set `DEMO_STAFF_PASSWORD` (10–128 characters) in Hostinger to replace the shared staff password. The staff account can read all customers and shipments. New passwords are stored as salted scrypt hashes. Browser sessions expire after eight hours or a server restart.
 
@@ -44,7 +44,7 @@ The build checks JavaScript syntax. The Node server serves the browser files and
 ## What to try
 
 1. Use Ana's customer portal to copy the Miami receiving address and account code, announce a package, or request a South Florida collection.
-2. Open **Receiving desk**. For a new walk-in customer, create an individual or business account at the counter; its Miami code is selected for the box immediately. For a collection, mark the request collected. Select the customer account, generate and print a QR label, enter the box contents, optional carrier reference, dimensions, condition and shelf, and add up to two photos. A walk-in counter drop-off works without carrier tracking.
+2. Open **Receiving desk** and select **Receive a package**. For a new walk-in customer, create an individual or business account at the counter; its Miami code is selected for the box immediately. For a collection, mark the request collected. Select the customer account, generate and print a QR label, enter the box contents, optional carrier reference, dimensions, condition and shelf, and add up to two photos. A walk-in counter drop-off works without carrier tracking.
 3. Scan the printed QR with a USB scanner, device camera, or image file. The scan selects the matching customer or reopens a previously received box. Confirm receipt, print the initial receipt, and create or print a draft freight quote. Scan lookup also accepts carrier tracking numbers. Recent received boxes can be reopened after a browser reload.
 4. Open **Demo setup** to edit the receiving address, contact details, hours, and draft quote rates. **Restore sample data** restores the sample customers’ shipments and warehouse settings. Other accounts and their shipments are preserved.
 

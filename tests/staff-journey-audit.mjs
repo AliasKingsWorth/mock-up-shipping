@@ -1,4 +1,4 @@
-import { signIn } from './sign-in.mjs'
+import { signIn, openIntake } from './sign-in.mjs'
 import { chromium } from 'playwright'
 import { mkdtemp, rm } from 'node:fs/promises'
 import os from 'node:os'
@@ -59,7 +59,7 @@ try {
   await page.getByRole('button', { name: 'Send collection request' }).click()
   await page.getByText('44 Sample Avenue, Hialeah, FL 33010').waitFor()
 
-  await signIn(page, base, 'desk@example.test')
+  await openIntake(page, base)
   await page.locator('#rc-source').selectOption('pickup')
   assert(await page.locator('#rc-pickup option').count() === 1, 'Uncollected request appeared in intake picker')
   await page.getByRole('button', { name: 'Mark collected' }).click()
@@ -139,7 +139,7 @@ try {
   assert(businessDashboard.packages.some(item => item.label === businessLabel), 'Business box missing from customer tracking')
 
   await page.reload()
-  await signIn(page, base, 'desk@example.test')
+  await openIntake(page, base)
   await page.locator('#lookup-form input').fill(businessLabel)
   await page.locator('#lookup-form button').click()
   await page.getByRole('heading', { name: 'Initial receiving receipt' }).waitFor()
@@ -151,7 +151,7 @@ try {
   assert(repeated.events.length === 1, 'Repeated scan added a duplicate custody event')
   const mobile = await browser.newPage({ viewport: { width: 320, height: 700 } })
   await signIn(mobile, base)
-  await signIn(mobile, base, 'desk@example.test')
+  await openIntake(mobile, base)
   await mobile.locator('.customer-create summary').click()
   const size = await mobile.evaluate(() => ({ viewport: innerWidth, content: document.documentElement.scrollWidth }))
   assert(size.content <= size.viewport + 1, `Staff intake overflows narrow mobile viewport: ${JSON.stringify(size)}`)

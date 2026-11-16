@@ -7,6 +7,9 @@ const stamp = value => value ? new Date(value).toLocaleString('en-US', { month: 
 const title = value => String(value || '').replaceAll('_', ' ').replace(/\b\w/g, c => c.toUpperCase())
 const S = { view: location.pathname === '/receiving' ? 'receiving' : 'customer', customerId: null, tab: 'packages', selectedPackageId: null, label: null, receipt: null, quote: null, pickupId: null, photos: [], searchResult: null, newCustomer: null, bootstrap: null, dashboard: null, queue: null, cameraStream: null, scanTimer: null }
 
+let staffPanel = 'receiving'
+const recordFilter = { query: '', status: '', page: 1, size: 10 }
+
 async function api(path, options = {}) {
   const response = await fetch(`/api/mock${path}`, { ...options, headers: { 'content-type': 'application/json', ...options.headers } })
   if (response.status === 401) location.replace(location.pathname === '/receiving' ? '/staff/login' : '/login')
@@ -20,9 +23,14 @@ async function refresh() {
   const staff = identity.role === 'staff'
   if (staff !== (location.pathname === '/receiving')) { location.replace(staff ? '/receiving' : '/portal'); return }
   if (!customers.some(item => item.id === S.customerId)) S.customerId = staff ? customers[0]?.id : identity.customerId
-  if (staff) S.queue = await api('/receiving/queue')
+  if (staff) {
+    S.queue = await api('/receiving/queue')
+    S.queue.records ??= S.queue.packages
+  }
   else S.dashboard = await api(`/customers/${identity.customerId}/dashboard`)
   $('#company-name').textContent = config.companyName
+  document.body.classList.toggle('staff-workspace', staff)
+  $('.staff-location').hidden = !staff
   document.querySelector('nav').hidden = !staff
   render()
 }
@@ -45,15 +53,72 @@ function addressSummary(customer) {
 function render() {
   stopCamera()
   if (!S.bootstrap) return
+  if (S.bootstrap.identity.role === 'customer') {
+    $('#app').innerHTML = customerView()
+    enhanceCustomerView()
+    return
+  }
+  $('#app').innerHTML = `<section id="desk-overview">${deskOverview()}</section>
+    <section id="desk-intake">${receivingView()}</section>
+    <section id="desk-collections">${sectionHead('Collections')}<div class="collection-slot"></div></section>
+    <section id="desk-setup">${setupView()}</section>`
+  enhanceReceivingView()
+  showStaffPanel(staffPanel)
+}
+function showStaffPanel(panel) {
+  const panels = { receiving: 'desk-overview', intake: 'desk-intake', collections: 'desk-collections', setup: 'desk-setup' }
+  if (!Object.hasOwn(panels, panel)) return
+  staffPanel = panel
+  S.view = panel === 'setup' ? 'setup' : 'receiving'
+  if (panel !== 'intake') stopCamera()
+  for (const [name, id] of Object.entries(panels)) document.getElementById(id).hidden = name !== panel
   for (const button of document.querySelectorAll('.nav-link')) {
-    const active = button.dataset.view === S.view
-    button.classList.toggle('active', active)
-    if (active) button.setAttribute('aria-current', 'page')
+    button.classList.toggle('active', button.dataset.view === panel)
+    if (button.dataset.view === panel) button.setAttribute('aria-current', 'page')
     else button.removeAttribute('aria-current')
   }
-  $('#app').innerHTML = S.view === 'customer' ? customerView() : S.view === 'receiving' ? receivingView() : setupView()
-  if (S.view === 'customer') enhanceCustomerView()
-  if (S.view === 'receiving') enhanceReceivingView()
+  const queue = $('#collections-queue')
+  if (panel === 'collections') $('#desk-collections .collection-slot').append(queue)
+  else if (panel === 'intake') $('#lookup-form').closest('.card').after(queue)
+  if (panel === 'receiving') updateRecords()
+}
+function deskOverview() {
+  const statuses = [...new Set(S.queue.records.map(item => item.state))].sort()
+  if (!statuses.includes(recordFilter.status)) recordFilter.status = ''
+  return `${sectionHead('Receiving desk')}
+    <div class="desk-banner"><div class="warehouse-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M2.5 9 12 3l9.5 6v11.5h-19zM7 20v-8h10v8M7 15h10M7 18h10"/></svg></div><div><h2>Miami warehouse</h2><p>${escapeHtml(S.bootstrap.config.receivingHours)}</p></div>
+      <button class="btn btn-primary" data-action="start-intake"><span aria-hidden="true">＋</span> Receive a package</button></div>
+    <section class="record-card" aria-labelledby="record-heading">
+      <header><h2 id="record-heading">Package records</h2><button class="text-button" data-action="refresh">Refresh queue</button></header>
+      <div class="record-tools"><label class="record-search"><span aria-hidden="true" class="search-icon"></span><input id="record-query" type="search" aria-label="Search package records" placeholder="Package, customer or tracking number" value="${escapeHtml(recordFilter.query)}"></label>
+      <select id="record-status" aria-label="Filter by package status"><option value="">All statuses</option>${statuses.map(value => `<option value="${escapeHtml(value)}" ${recordFilter.status === value ? 'selected' : ''}>${escapeHtml(title(value))}</option>`).join('')}</select></div>
+      <div class="record-scroll"><table class="record-table"><thead><tr><th scope="col">Package</th><th scope="col">Customer</th><th scope="col">Received</th><th scope="col">Status</th><th scope="col"><span class="visually-hidden">View record</span></th></tr></thead><tbody></tbody></table></div>
+      <footer class="record-footer"><label>Rows per page <select id="record-size">${[10,25,50].map(n => `<option ${recordFilter.size === n ? 'selected' : ''}>${n}</option>`).join('')}</select></label><span id="record-count" aria-live="polite"></span>
+        <div class="pager"><button data-page="-1" aria-label="Previous page">‹</button><span id="record-page"></span><button data-page="1" aria-label="Next page">›</button></div></footer>
+    </section>`
+}
+function updateRecords() {
+  const customers = new Map(S.bootstrap.customers.map(customer => [customer.id, customer]))
+  const query = recordFilter.query.trim().toLowerCase()
+  const records = S.queue.records.filter(item => {
+    const customer = customers.get(item.customerId)
+    return (!recordFilter.status || item.state === recordFilter.status) &&
+      [item.label, item.contents, item.tracking, customer?.name, customer?.accountCode].some(value => String(value || '').toLowerCase().includes(query))
+  })
+  const pages = Math.max(1, Math.ceil(records.length / recordFilter.size))
+  recordFilter.page = Math.max(1, Math.min(recordFilter.page, pages))
+  const start = (recordFilter.page - 1) * recordFilter.size
+  const rows = records.slice(start, start + recordFilter.size)
+  $('.record-table tbody').innerHTML = rows.map(item => {
+    const customer = customers.get(item.customerId)
+    return `<tr><td><button class="record-link" data-record="${escapeHtml(item.label)}">${escapeHtml(item.label)}</button><small>${escapeHtml(item.contents)}</small></td>
+      <td>${escapeHtml(customer?.name || 'Unknown customer')}<small>${escapeHtml(customer?.accountCode)}</small></td><td>${date(item.receivedAt)}</td>
+      <td>${badge(item.state)}</td><td><button class="row-open" data-record="${escapeHtml(item.label)}" aria-label="View ${escapeHtml(item.label)}">›</button></td></tr>`
+  }).join('') || '<tr><td class="empty" colspan="5">No matching packages.</td></tr>'
+  $('#record-count').textContent = records.length ? `${start + 1}–${start + rows.length} of ${records.length}` : '0 records'
+  $('#record-page').textContent = `Page ${recordFilter.page} of ${pages}`
+  $('[data-page="-1"]').disabled = recordFilter.page === 1
+  $('[data-page="1"]').disabled = recordFilter.page === pages
 }
 function enhanceCustomerView() {
   $('#pu-date').min = miamiToday()
@@ -86,7 +151,7 @@ function packageDetail(pkg, quotes) {
 function receivingView() {
   const customers = S.bootstrap.customers
   const queue = S.queue
-  return `${sectionHead('Receiving desk', '<button class="btn btn-secondary" data-action="refresh">Refresh queue</button>')}
+  return `${sectionHead('Package intake', '<button class="btn btn-secondary" data-action="refresh">Refresh queue</button>')}
   <div class="grid grid-wide receiving-grid"><div class="card card-pad intake-card"><div class="card-head"><h2>Receive a package</h2></div>
   ${S.newCustomer ? `<div class="new-customer-notice" role="status"><strong>${escapeHtml(S.newCustomer.name)} · ${escapeHtml(S.newCustomer.accountCode)}</strong><span>Account created and selected for this box. Generate its QR label below.</span></div>` : ''}
   <details class="customer-create"><summary>Create a walk-in account</summary><form id="customer-create-form" class="form-grid"><div class="field"><label for="new-kind">Account type</label><select id="new-kind" name="kind"><option value="individual">Individual</option><option value="business">Business</option></select></div>${field('new-name', 'Customer or business name', 'text', '', 'required maxlength="120" autocomplete="name"')}${field('new-phone', 'Contact phone', 'tel', '', 'required maxlength="60" autocomplete="tel"')}${field('new-email', 'Email (optional)', 'email', '', 'maxlength="160" autocomplete="email"')}${field('new-password', 'Portal password (optional)', 'password', '', 'minlength="10" maxlength="128" autocomplete="new-password" placeholder="Requires an email address"')}<div class="field full"><label for="new-delivery">Honduras delivery address (optional)</label><textarea id="new-delivery" name="deliveryAddress" maxlength="600" placeholder="Street or colonia, city and department"></textarea></div><div class="field full"><div class="form-actions"><button class="btn btn-primary" type="submit">Create customer &amp; select account</button></div></div></form></details>
@@ -110,7 +175,7 @@ function enhanceReceivingView() {
   queueLink.className = 'btn btn-secondary'
   queueLink.href = '#collections-queue'
   queueLink.textContent = 'View collections'
-  $('.head-actions').prepend(queueLink)
+  $('#desk-intake .head-actions').prepend(queueLink)
   $('#lookup-form input').placeholder = 'Label or tracking number'
   for (const [id, heading] of [['rc-label', 'Package identification'], ['rc-shelf', 'Measurements and storage']]) {
     const section = document.createElement('h3')
@@ -325,7 +390,18 @@ document.addEventListener('click', async event => {
     return
   }
   const nav = event.target.closest('[data-view]')
-  if (nav && S.bootstrap?.identity.role === 'staff' && ['receiving', 'setup'].includes(nav.dataset.view)) { S.view = nav.dataset.view; render(); return }
+  if (nav && S.bootstrap?.identity.role === 'staff') { showStaffPanel(nav.dataset.view); window.scrollTo(0, 0); return }
+  const pageButton = event.target.closest('[data-page]')
+  if (pageButton) { recordFilter.page += Number(pageButton.dataset.page); updateRecords(); return }
+  const record = event.target.closest('[data-record]')
+  if (record) {
+    try {
+      const pkg = await api('/receiving/lookup?label=' + encodeURIComponent(record.dataset.record))
+      $('#staff-record-body').innerHTML = packageDetail(pkg, []) + (pkg.receiptNo ? `<div class="form-actions"><button class="btn btn-primary" data-open-package="${escapeHtml(pkg.label)}">Open receiving receipt</button></div>` : '')
+      $('#staff-record').showModal()
+    } catch (e) { error(e) }
+    return
+  }
   const tab = event.target.closest('[data-tab]')
   if (tab) { S.tab = tab.dataset.tab; render(); return }
   const pkg = event.target.closest('[data-package]')
@@ -344,12 +420,17 @@ document.addEventListener('click', async event => {
     return
   }
   const open = event.target.closest('[data-open-package]')
-  if (open) { try { await openPackage(open.dataset.openPackage); toast('Saved receipt opened') } catch (e) { error(e) }; return }
+  if (open) { try { if ($('#staff-record').open) $('#staff-record').close(); staffPanel = 'intake'; await openPackage(open.dataset.openPackage); toast('Saved receipt opened') } catch (e) { error(e) }; return }
   const action = event.target.closest('[data-action]')?.dataset.action
   if (!action) return
   try {
     if (action === 'close-dialog') event.target.closest('dialog').close()
     if (action === 'logout') { await api('/auth/logout', { method: 'POST', body: '{}' }); location.replace(S.bootstrap?.identity.role === 'staff' ? '/staff/login' : '/login'); return }
+    if (action === 'start-intake') {
+      if (S.receipt) { S.receipt = S.quote = S.label = S.searchResult = S.newCustomer = null; S.photos = []; render() }
+      showStaffPanel('intake')
+      $('#rc-account').focus()
+    }
     if (action === 'retry') await refresh()
     if (action === 'copy-address') {
       await navigator.clipboard.writeText(`${S.bootstrap.config.miamiAddress}\nAccount: ${S.dashboard.customer.accountCode}`)
@@ -399,7 +480,17 @@ document.addEventListener('click', async event => {
     if (action === 'reset') { if (!confirm('Restore the sample shipments and default warehouse settings?')) return; await api('/reset', { method: 'POST', body: '{}' }); S.label = S.receipt = S.quote = S.newCustomer = null; S.customerId = 'cus_ana'; await refresh(); toast('Sample data restored') }
   } catch (e) { error(e) }
 })
+document.addEventListener('input', event => {
+  if (event.target.id === 'record-query') { recordFilter.query = event.target.value; recordFilter.page = 1; updateRecords() }
+})
 document.addEventListener('change', async event => {
+  if (event.target.id === 'record-size' || event.target.id === 'record-status') {
+    recordFilter.size = Number($('#record-size').value)
+    recordFilter.status = $('#record-status').value
+    recordFilter.page = 1
+    updateRecords()
+    return
+  }
   if (event.target.id === 'rc-source') updatePickupOptions()
   if (event.target.id === 'rc-account') {
     if (S.newCustomer && S.newCustomer.accountCode !== event.target.value) {
